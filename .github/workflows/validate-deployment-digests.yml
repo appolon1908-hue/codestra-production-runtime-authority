@@ -44,14 +44,17 @@ jobs:
           import re
           from pathlib import Path
           required = {
-              "kong-service-auth-adapter", "monitoring-receiver",
-              "private-integration-gateway", "sms-api", "sms-api-event-worker",
+              "ghcr.io/appolon1908-hue/kong-service-auth-adapter",
+              "ghcr.io/appolon1908-hue/monitoring-receiver",
+              "ghcr.io/appolon1908-hue/private-integration-gateway",
+              "ghcr.io/appolon1908-hue/sms-api",
+              "ghcr.io/appolon1908-hue/sms-api-event-worker",
           }
           found = set()
           for path in Path("components").glob("**/compose*.yaml"):
               for value in re.findall(r"^\s*image:\s*(\S+)", path.read_text(), re.M):
                   if "ghcr.io/" in value:
                       assert re.fullmatch(r"[^@]+@sha256:[0-9a-f]{64}", value), (path, value)
-                      found.add(value.split("/")[-1].split("@")[0])
+                      found.add(value.split("@", 1)[0])
           assert required <= found, required - found
           PY
