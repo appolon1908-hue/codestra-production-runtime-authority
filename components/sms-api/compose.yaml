@@ -23,6 +23,7 @@ services:
     pids_limit: 128
   api:
     build: .
+    image: ghcr.io/appolon1908-hue/sms-api@sha256:e620fc2e15989e395e0c69bad682a31dbf10fffecc569053e7d1ff5d3a1ede47
     restart: unless-stopped
     env_file:
       - /etc/codestra/secrets/kyqra-telnexa/middleware.env
@@ -58,6 +59,7 @@ services:
     pids_limit: 128
   event-worker:
     build: .
+    image: ghcr.io/appolon1908-hue/sms-api-event-worker@sha256:7a9ab0aa14075892edee8c0cba68bb7979645c0795812892c3e07ab0d16b3e3a
     command: ["python", "-m", "app.event_worker"]
     healthcheck:
       test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]

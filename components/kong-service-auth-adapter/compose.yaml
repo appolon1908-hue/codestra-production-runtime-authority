@@ -2,7 +2,7 @@ name: codestra-kong-service-auth
 services:
   adapter:
     build: .
-    image: codestra/kong-service-auth-adapter:20260820
+    image: ghcr.io/appolon1908-hue/kong-service-auth-adapter@sha256:517052ebd58f8ae546ffba21598fc1b8357006d60c961d9cda468d2fb25adf4a
     restart: unless-stopped
     environment:
       PORT: "8080"
