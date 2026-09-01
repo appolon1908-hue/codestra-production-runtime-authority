@@ -11,6 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 OVERLAY = ROOT / "PROTECTED-SOURCE-CAPABILITY-RECONCILIATION.yaml"
 RUNTIME = ROOT / "IMMUTABLE-CANDIDATE-MATRIX.yaml"
+RUNTIME_AUTHORITY_MERGE = "bd99e533e46b36f018a990f0c742643534e08f88"
 CAPABILITIES = {
     "advertising_write", "external_delivery", "social_publish",
     "external_model_call", "sms_delivery", "email_delivery",
@@ -38,6 +39,24 @@ EXPECTED = {
         "9d2805ca397b7fdafab0e913cd442126fe1391d2",
     ),
 }
+EMAIL_CAPABILITIES = {
+    "advertising_write": False,
+    "external_delivery": True,
+    "social_publish": False,
+    "external_model_call": False,
+    "sms_delivery": False,
+    "email_delivery": True,
+    "pstn_dialing": False,
+    "n8n_provider_write": False,
+}
+NO_EFFECT_CAPABILITIES = {name: False for name in CAPABILITIES}
+EXPECTED_CAPABILITIES = {
+    "codestra-beyvra-email-api-1": EMAIL_CAPABILITIES,
+    "codestra-email-reseller-api-1": EMAIL_CAPABILITIES,
+    "codestra-mail-api-mail-api-1": EMAIL_CAPABILITIES,
+    "codestra-provisioning-service-provisioning-service-1": EMAIL_CAPABILITIES,
+    "codestra-reseller-portal-portal-1": NO_EFFECT_CAPABILITIES,
+}
 
 
 def fail(message: str) -> None:
@@ -51,8 +70,8 @@ def validate(overlay: dict, runtime: dict) -> None:
         fail("overlay must assert production_changed=false")
     if overlay.get("runtime_verified") is not False:
         fail("source evidence must never assert runtime verification")
-    if not re.fullmatch(r"[0-9a-f]{40}", overlay.get("based_on_runtime_authority_merge", "")):
-        fail("runtime authority merge must be an exact SHA")
+    if overlay.get("based_on_runtime_authority_merge") != RUNTIME_AUTHORITY_MERGE:
+        fail("runtime authority merge differs from the reviewed immutable capture")
 
     workloads = overlay.get("workloads", {})
     if set(workloads) != set(EXPECTED):
@@ -79,6 +98,8 @@ def validate(overlay: dict, runtime: dict) -> None:
             fail(f"{name}: capability keys are incomplete or unexpected")
         if any(type(value) is not bool for value in capabilities.values()):
             fail(f"{name}: every source capability must be boolean")
+        if capabilities != EXPECTED_CAPABILITIES[name]:
+            fail(f"{name}: capabilities differ from the reviewed source classification")
 
 
 def main() -> int:

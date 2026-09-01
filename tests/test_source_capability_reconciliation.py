@@ -35,6 +35,13 @@ class SourceCapabilityReconciliationTest(unittest.TestCase):
     def test_runtime_verification_cannot_be_claimed(self):
         self.assert_rejected(lambda data: data.__setitem__("runtime_verified", True))
 
+    def test_runtime_authority_merge_is_pinned(self):
+        self.assert_rejected(
+            lambda data: data.__setitem__(
+                "based_on_runtime_authority_merge", "0" * 40
+            )
+        )
+
     def test_production_change_cannot_be_claimed(self):
         self.assert_rejected(lambda data: data.__setitem__("production_changed", True))
 
@@ -62,6 +69,13 @@ class SourceCapabilityReconciliationTest(unittest.TestCase):
             lambda data: data["workloads"]["codestra-beyvra-email-api-1"][
                 "capabilities"
             ].__setitem__("email_delivery", "UNKNOWN")
+        )
+
+    def test_different_boolean_capability_is_rejected(self):
+        self.assert_rejected(
+            lambda data: data["workloads"]["codestra-beyvra-email-api-1"][
+                "capabilities"
+            ].__setitem__("email_delivery", False)
         )
 
 
