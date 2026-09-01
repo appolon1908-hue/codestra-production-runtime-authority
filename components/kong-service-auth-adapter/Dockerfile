@@ -5,6 +5,7 @@ ARG VERSION
 LABEL org.opencontainers.image.revision=$VCS_REF \
       org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.version=$VERSION
+RUN apk upgrade --no-cache
 WORKDIR /app
 COPY adapter.py /app/adapter.py
 ENTRYPOINT ["python", "/app/adapter.py"]
