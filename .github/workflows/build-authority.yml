@@ -42,8 +42,8 @@ jobs:
             VCS_REF=${{ github.sha }}
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
             VERSION=${{ github.sha }}
-          provenance: mode=max
-          sbom: true
+          provenance: ${{ github.event_name == 'push' && 'mode=max' || 'false' }}
+          sbom: ${{ github.event_name == 'push' }}
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.component }}:${{ github.sha }}
