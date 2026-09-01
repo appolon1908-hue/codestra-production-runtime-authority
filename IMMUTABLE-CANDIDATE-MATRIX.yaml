@@ -207,7 +207,7 @@ candidates:
     deployment_authorized: false
   codestra-middleware-event-gateway-1:
     repository: Codestra-SRL/codestra-middleware
-    source_sha: f885e6d78e6e0169ba49ae6250757dd77bb8cf96
+    source_sha: 9c021a6375fa84fb8ce214c6a1504ca6a9b5d8b0
     current_runtime_image_id: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
     candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
     config_change: 'YES'
@@ -229,7 +229,7 @@ candidates:
     deployment_authorized: false
   codestra-middleware-external-webhook-worker-1:
     repository: Codestra-SRL/codestra-middleware
-    source_sha: f885e6d78e6e0169ba49ae6250757dd77bb8cf96
+    source_sha: 9c021a6375fa84fb8ce214c6a1504ca6a9b5d8b0
     current_runtime_image_id: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
     candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
     config_change: 'YES'
