@@ -27,7 +27,7 @@ services:
     env_file:
       - /etc/codestra/secrets/kyqra-telnexa/middleware.env
     environment:
-      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@sms-postgres:5432/codestra_sms
+      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@postgres:5432/codestra_sms
       SMS_DLR_TOKEN: ${SMS_DLR_TOKEN:?required}
       SMS_GATEWAY_TOKEN_SHA256_FILE: /run/auth-verifiers/sms_gateway_token.sha256
       TELNEXA_BASE_URL: https://telnexa.internal.codestra.agency:8443
@@ -68,7 +68,7 @@ services:
     env_file:
       - /etc/codestra/secrets/kyqra-telnexa/middleware.env
     environment:
-      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@sms-postgres:5432/codestra_sms
+      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@postgres:5432/codestra_sms
       SMS_EVENT_CONTROL_PLANE_URL: http://codestra-integration-control-plane-api-1:8096/api/v1/events/telnexa
       SMS_EVENT_MAX_ATTEMPTS: "5"
       SMS_EVENT_TIMEOUT_SECONDS: "5"

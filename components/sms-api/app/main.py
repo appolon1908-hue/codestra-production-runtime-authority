@@ -3,10 +3,8 @@ import hmac
 import json
 import os
 import re
-import threading
 import time
 import uuid
-from collections import deque
 from decimal import Decimal
 
 import psycopg
@@ -35,7 +33,8 @@ DLR_MAP = {
     "REJECTD": "rejected", "REJECTED": "rejected",
     "EXPIRED": "expired",
 }
-global_hits, global_lock = deque(), threading.Lock()
+GSM_BASIC = frozenset("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà")
+GSM_EXTENSION = frozenset("^{}\\[~]|€")
 
 
 def telnexa_outbound_headers(body, *, timestamp=None, nonce=None):
@@ -125,9 +124,13 @@ def internal_event(conn, account, message, event_type, canonical_status, provide
 
 
 def segments(text):
-    gsm = all(ord(c) < 128 for c in text)
-    single, concat = (160, 153) if gsm else (70, 67)
-    return 1 if len(text) <= single else (len(text) + concat - 1) // concat
+    if all(c in GSM_BASIC or c in GSM_EXTENSION for c in text):
+        units = sum(2 if c in GSM_EXTENSION else 1 for c in text)
+        single, concat = 160, 153
+    else:
+        units = len(text.encode("utf-16-be")) // 2
+        single, concat = 70, 67
+    return 1 if units <= single else (units + concat - 1) // concat
 
 
 def validate_carrier_submission(*, synthetic, live_delivery, receipt):
@@ -141,16 +144,13 @@ def validate_carrier_submission(*, synthetic, live_delivery, receipt):
     return carrier_submitted
 
 
-def global_rate_ok():
-    now = time.time()
+def global_rate_ok(conn):
     limit = int(os.getenv("GLOBAL_RATE_PER_MINUTE", "1000"))
-    with global_lock:
-        while global_hits and global_hits[0] < now - 60:
-            global_hits.popleft()
-        if len(global_hits) >= limit:
-            return False
-        global_hits.append(now)
-        return True
+    conn.execute("SELECT pg_advisory_xact_lock(%s)", (0x434F444553545241,))
+    recent = conn.execute(
+        "SELECT count(*) AS n FROM sms_messages WHERE created_at > now()-interval '1 minute'"
+    ).fetchone()["n"]
+    return recent < limit
 
 
 @app.get("/health")
@@ -250,7 +250,7 @@ def create_message():
             if not synthetic and os.getenv("LIVE_SUBMISSION_ENABLED", "false").lower() != "true":
                 audit("sms.denied", detail={"reason": "live_submission_disabled"})
                 return error("service_not_activated", "live SMS submission is disabled", 503)
-            if not global_rate_ok():
+            if not global_rate_ok(conn):
                 audit("sms.denied", detail={"reason": "global_rate"})
                 return error("global_rate_limited", "global SMS rate exceeded", 429)
             limit = conn.execute("SELECT * FROM sms_account_limits WHERE account_id=%s", (account["id"],)).fetchone()

@@ -36,6 +36,7 @@ EVENT_TYPES = {
     "/api/v1/klyrow/complaints": "klyrow.email.complained",
     "/api/v1/klyrow/unsubscribes": "klyrow.email.unsubscribed",
 }
+READY_EVENTS_SQL = "SELECT * FROM events WHERE state='queued' AND next_attempt<=? ORDER BY created_at ASC LIMIT 20"
 
 def db():
     conn = sqlite3.connect(DB, timeout=10)
@@ -46,7 +47,8 @@ def initialize():
     os.makedirs(os.path.dirname(DB), exist_ok=True)
     with db() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS events(event_id TEXT PRIMARY KEY, system TEXT NOT NULL, path TEXT NOT NULL, entity_key TEXT, payload TEXT NOT NULL, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_attempt REAL NOT NULL DEFAULT 0, created_at REAL NOT NULL, last_error TEXT)")
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS kyqra_record_unique ON events(system, entity_key) WHERE system='kyqra' AND entity_key IS NOT NULL")
+        conn.execute("DROP INDEX IF EXISTS kyqra_record_unique")
+        conn.execute("CREATE UNIQUE INDEX kyqra_record_unique ON events(system, entity_key) WHERE system='kyqra' AND path='/api/v1/kyqra/results' AND entity_key IS NOT NULL")
         conn.execute("CREATE TABLE IF NOT EXISTS outbound(idempotency_key TEXT PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL, created_at REAL NOT NULL)")
 
 def canonical(timestamp, event_id, source, body):
@@ -57,11 +59,16 @@ def entity_key(system, path, payload):
         return str(payload.get("record_id") or "") or None
     return str(payload.get("message_id") or payload.get("job_id") or "") or None
 
+def mock_adapter_receipt(payload, duplicate):
+    adapter_message_id = "mock-" + hashlib.sha256(payload["idempotency_key"].encode()).hexdigest()[:24]
+    return {"accepted": True, "duplicate": duplicate, "carrier_submitted": False,
+            "state": "mock_accepted", "adapter_message_id": adapter_message_id}
+
 def worker():
     while True:
         try:
             with db() as conn:
-                rows = conn.execute("SELECT * FROM events WHERE state='queued' AND next_attempt<=? ORDER BY created_at DESC LIMIT 20", (time.time(),)).fetchall()
+                rows = conn.execute(READY_EVENTS_SQL, (time.time(),)).fetchall()
             for row in rows:
                 deliver(row)
         except Exception as exc:
@@ -186,8 +193,9 @@ class Handler(BaseHTTPRequestHandler):
             duplicate=False
         except sqlite3.IntegrityError: duplicate=True
         logging.info("system=telnexa idempotency_key=%s customer_id=%s outbound_mock=true",payload["idempotency_key"],payload["customer_id"])
-        self.send_json(202,{"accepted":True,"duplicate":duplicate,"carrier_submitted":False,"state":"mock_accepted"})
+        self.send_json(202, mock_adapter_receipt(payload, duplicate))
 
-initialize()
-threading.Thread(target=worker, daemon=True).start()
-ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+if __name__ == "__main__":
+    initialize()
+    threading.Thread(target=worker, daemon=True).start()
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()

@@ -40,6 +40,11 @@ class SmsCompletionTests(unittest.TestCase):
         self.assertEqual(main.segments("a" * 161), 2)
         self.assertEqual(main.segments("é" * 70), 1)
         self.assertEqual(main.segments("é" * 71), 2)
+        self.assertEqual(main.segments("^" * 80), 1)
+        self.assertEqual(main.segments("^" * 81), 2)
+        self.assertEqual(main.segments("{" * 160), 3)
+        self.assertEqual(main.segments("`" * 70), 1)
+        self.assertEqual(main.segments("`" * 71), 2)
 
     def test_carrier_submission_requires_live_non_synthetic_mode(self):
         self.assertTrue(main.validate_carrier_submission(
