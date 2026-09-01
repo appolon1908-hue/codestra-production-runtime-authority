@@ -83,6 +83,10 @@ services:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout codestra
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_LOG_LEVEL: notice
+      # The host exposes 12 CPUs, but this low-traffic gateway does not need
+      # 12 memory-heavy OpenResty workers. Four preserves concurrency while
+      # keeping the 3 GiB cgroup below the 90% production alert boundary.
+      KONG_NGINX_WORKER_PROCESSES: "4"
     depends_on:
       kong-db:
         condition: service_healthy

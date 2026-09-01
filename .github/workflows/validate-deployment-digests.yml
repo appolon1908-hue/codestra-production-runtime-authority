@@ -57,4 +57,6 @@ jobs:
                       assert re.fullmatch(r"[^@]+@sha256:[0-9a-f]{64}", value), (path, value)
                       found.add(value.split("@", 1)[0])
           assert required <= found, required - found
+          kong = Path("vendor/kong-gateway/compose.yaml").read_text()
+          assert 'KONG_NGINX_WORKER_PROCESSES: "4"' in kong
           PY
