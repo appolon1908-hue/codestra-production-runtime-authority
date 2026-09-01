@@ -1,0 +1,29 @@
+name: private-integration
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    env_file: /etc/codestra/secrets/kyqra-telnexa/middleware.env
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    volumes:
+      - gateway_data:/data
+    ports:
+      - "10.40.0.1:8095:8080"
+    networks:
+      - ingress
+    expose: ["8080"]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/health]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+networks:
+  ingress:
+    name: codestra_edge
+    external: true
+volumes:
+  gateway_data:

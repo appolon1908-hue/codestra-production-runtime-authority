@@ -1,0 +1,65 @@
+services:
+  upstream-gateway:
+    image: caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    container_name: codestra-caddy-upstream-gateway
+    user: "65534:65534"
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m,uid=65534,gid=65534
+      - /data:rw,noexec,nosuid,size=8m,uid=65534,gid=65534
+      - /config:rw,noexec,nosuid,size=8m,uid=65534,gid=65534
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:18101:18101"
+      - "127.0.0.1:18102:18102"
+      - "127.0.0.1:18103:18103"
+      - "127.0.0.1:18104:18104"
+      - "127.0.0.1:18105:18105"
+      - "127.0.0.1:18106:18106"
+      - "127.0.0.1:18107:18107"
+      - "127.0.0.1:18108:18108"
+      - "127.0.0.1:18109:18109"
+      - "127.0.0.1:18110:18110"
+      - "127.0.0.1:18111:18111"
+      - "127.0.0.1:18112:18112"
+      - "127.0.0.1:18113:18113"
+      - "127.0.0.1:18114:18114"
+      - "127.0.0.1:18115:18115"
+      - "127.0.0.1:18116:18116"
+    networks:
+      - edge
+      - backend
+      - identity
+      - identity_staging
+      - n8n_staging_edge
+
+networks:
+  edge:
+    external: true
+    name: codestra_edge
+  backend:
+    external: true
+    name: codestra_backend
+  identity:
+    external: true
+    name: codestra-identity_identity_service
+  identity_staging:
+    external: true
+    name: codestra-identity-staging_service
+  n8n_staging_edge:
+    external: true
+    name: codestra-n8n-staging_edge

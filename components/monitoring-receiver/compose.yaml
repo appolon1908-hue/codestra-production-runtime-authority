@@ -1,0 +1,26 @@
+name: codestra-monitoring-receiver
+services:
+  receiver:
+    build: .
+    user: "0:0"
+    restart: unless-stopped
+    networks: [edge]
+    volumes:
+      - receiver_data:/data
+      - /etc/codestra/secrets/monitoring/receiver_hmac:/run/secrets/hmac:ro
+      - /etc/codestra/secrets/monitoring/receiver_bearer:/run/secrets/bearer:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/readyz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+networks:
+  edge:
+    external: true
+    name: codestra_edge
+volumes:
+  receiver_data:

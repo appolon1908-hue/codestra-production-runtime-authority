@@ -1,0 +1,40 @@
+schema: codestra.vendor-deployment-authority.v1
+captured_at: "2026-09-01T12:00:00-04:00"
+production_changed: false
+deployment_authorized: false
+
+authorities:
+  codestra-caddy-upstream-gateway:
+    directory: vendor/caddy-upstream-gateway
+    image: caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    config_authority: Caddyfile
+  codestra-kong-kong-gateway-1:
+    directory: vendor/kong-gateway
+    image: kong/kong-gateway@sha256:9cb0429e4641d29189118b20ef0a195569b9d65ef0536bc57907797874071689
+    config_authority: compose.yaml and Codestra gateway identity plugin
+  codestra-mail-isolated-stalwart-1:
+    directory: vendor/stalwart
+    image: stalwartlabs/stalwart@sha256:9ed1d343243b7aa72969e372a7240b7ddea07730781d4b68a0dc3d8d51c418bb
+    config_authority: compose.yaml
+  codestra-n8n-internal-proxy:
+    directory: vendor/n8n-internal-proxy
+    image: codestra/caddy@sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    config_authority: Caddyfile and compose.yaml
+  codestra-odoo-internal-proxy:
+    directory: vendor/odoo-internal-proxy
+    image: codestra/caddy@sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    config_authority: Caddyfile and compose.yaml
+  codestra-private-vicidial-ingress-1:
+    directory: vendor/private-vicidial-ingress
+    image: codestra/caddy@sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    config_authority: Caddyfile and compose.yaml
+  codestra-reseller-portal-postgres-1:
+    directory: vendor/reseller-portal-postgres
+    image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    config_authority: compose.yaml
+
+policy:
+  digest_pinned: true
+  configuration_git_controlled: true
+  runtime_replacement_authorized: false
+  external_business_writes_enabled: false

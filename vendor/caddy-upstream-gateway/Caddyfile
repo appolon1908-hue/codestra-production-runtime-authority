@@ -1,0 +1,57 @@
+{
+	admin off
+	auto_https off
+}
+
+:18101 {
+	reverse_proxy codestra-kong-kong-gateway-1:8000 {
+		header_up X-Forwarded-Proto https
+	}
+}
+:18102 {
+	reverse_proxy codestra-websocket-gateway-gateway-1:8080
+}
+:18103 {
+	reverse_proxy codestra-identity-keycloak-1:8080
+}
+:18104 {
+	reverse_proxy codestra-reseller-portal-oidc-gateway-1:4180
+}
+:18105 {
+	@odoo_realtime path /websocket /websocket/*
+	reverse_proxy @odoo_realtime codestra-odoo-1:8072
+	reverse_proxy codestra-odoo-1:8069
+}
+:18106 {
+	reverse_proxy codestra-n8n-1:5678
+}
+:18107 {
+	reverse_proxy codestra-n8n-staging-n8n-1:5678
+}
+:18108 {
+	reverse_proxy codestra-middleware-staging-middleware-staging-1:8095
+}
+:18109 {
+	reverse_proxy codestra-n8n-staging-webhook-1:5678
+}
+:18110 {
+	reverse_proxy codestra-identity-staging-keycloak-staging-1:8080
+}
+:18111 {
+	reverse_proxy codestra-odoo-staging-odoo-staging-1:8069
+}
+:18112 {
+	reverse_proxy codestra-middleware-1:8095
+}
+:18113 {
+	reverse_proxy codestra-identity-auth-gateway-1:4180
+}
+:18114 {
+	reverse_proxy codestra-agent-desktop-sipjs-staging:8080
+}
+:18115 {
+	reverse_proxy codestra-monitoring-receiver-receiver-1:8080
+}
+:18116 {
+	reverse_proxy codestra-kong-identity-certification-1:8080
+}

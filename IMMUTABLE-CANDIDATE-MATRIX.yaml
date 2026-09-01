@@ -1,0 +1,479 @@
+schema: codestra.immutable-candidate-matrix.v1
+captured_at: '2026-09-01T12:00:00-04:00'
+production_changed: false
+deployment_authorized: false
+candidates:
+  codestra-beyvra-email-api-1:
+    repository: Codestra-SRL/codestra-middleware
+    source_sha: UNKNOWN
+    current_runtime_image_id: sha256:a226db03c6fce98f81c02e78bab96a2beb452a27dd79308c921e85bfa664aa52
+    candidate_image_digest: UNKNOWN
+    config_change: UNKNOWN
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:a226db03c6fce98f81c02e78bab96a2beb452a27dd79308c921e85bfa664aa52
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: UNKNOWN
+      external_delivery: UNKNOWN
+      social_publish: UNKNOWN
+      external_model_call: UNKNOWN
+      sms_delivery: UNKNOWN
+      email_delivery: UNKNOWN
+      pstn_dialing: UNKNOWN
+      n8n_provider_write: UNKNOWN
+    pr: 170
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-caddy-upstream-gateway:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-email-reseller-api-1:
+    repository: appolon1908-hue/codestra-production-platform
+    source_sha: UNKNOWN
+    current_runtime_image_id: sha256:8d7bb50e8787c110a7930fadb0c69a44ba075c70cb5e035118d9f334b1211e08
+    candidate_image_digest: UNKNOWN
+    config_change: UNKNOWN
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:8d7bb50e8787c110a7930fadb0c69a44ba075c70cb5e035118d9f334b1211e08
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: UNKNOWN
+      external_delivery: UNKNOWN
+      social_publish: UNKNOWN
+      external_model_call: UNKNOWN
+      sms_delivery: UNKNOWN
+      email_delivery: UNKNOWN
+      pstn_dialing: UNKNOWN
+      n8n_provider_write: UNKNOWN
+    pr: 170
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-integration-control-plane-api-1:
+    repository: appolon1908-hue/codestra-production-platform
+    source_sha: aa3d903648d5f7c4cc10acee93e509a37ac36f76
+    current_runtime_image_id: sha256:646b7f2a611b26986b81c143661b14e825ac977f9b3f84274fc8432f501e90f9
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:646b7f2a611b26986b81c143661b14e825ac977f9b3f84274fc8432f501e90f9
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: true
+      external_delivery: true
+      social_publish: true
+      external_model_call: true
+      sms_delivery: true
+      email_delivery: true
+      pstn_dialing: true
+      n8n_provider_write: true
+    pr: 169
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-integration-control-plane-worker-1:
+    repository: appolon1908-hue/codestra-production-platform
+    source_sha: aa3d903648d5f7c4cc10acee93e509a37ac36f76
+    current_runtime_image_id: sha256:646b7f2a611b26986b81c143661b14e825ac977f9b3f84274fc8432f501e90f9
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:646b7f2a611b26986b81c143661b14e825ac977f9b3f84274fc8432f501e90f9
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: true
+      external_delivery: true
+      social_publish: true
+      external_model_call: true
+      sms_delivery: true
+      email_delivery: true
+      pstn_dialing: true
+      n8n_provider_write: true
+    pr: 169
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-kong-kong-gateway-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:9cb0429e4641d29189118b20ef0a195569b9d65ef0536bc57907797874071689
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:9cb0429e4641d29189118b20ef0a195569b9d65ef0536bc57907797874071689
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-kong-service-auth-adapter-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:aa1d68841f4fdddac0c445d26a953fdbfe1e311a0540a3a1c588a8b98af1ec71
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:aa1d68841f4fdddac0c445d26a953fdbfe1e311a0540a3a1c588a8b98af1ec71
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-mail-api-mail-api-1:
+    repository: appolon1908-hue/codestra-production-platform
+    source_sha: UNKNOWN
+    current_runtime_image_id: sha256:7495d5f0d79f027456ed61b7c3c2ea9331c228f3d2e10bceef3178eef5a62594
+    candidate_image_digest: UNKNOWN
+    config_change: UNKNOWN
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:7495d5f0d79f027456ed61b7c3c2ea9331c228f3d2e10bceef3178eef5a62594
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: UNKNOWN
+      external_delivery: UNKNOWN
+      social_publish: UNKNOWN
+      external_model_call: UNKNOWN
+      sms_delivery: UNKNOWN
+      email_delivery: UNKNOWN
+      pstn_dialing: UNKNOWN
+      n8n_provider_write: UNKNOWN
+    pr: 170
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-mail-isolated-stalwart-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:9ed1d343243b7aa72969e372a7240b7ddea07730781d4b68a0dc3d8d51c418bb
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:9ed1d343243b7aa72969e372a7240b7ddea07730781d4b68a0dc3d8d51c418bb
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: true
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-middleware-event-gateway-1:
+    repository: Codestra-SRL/codestra-middleware
+    source_sha: 9c021a6375fa84fb8ce214c6a1504ca6a9b5d8b0
+    current_runtime_image_id: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 276
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-middleware-external-webhook-worker-1:
+    repository: Codestra-SRL/codestra-middleware
+    source_sha: 9c021a6375fa84fb8ce214c6a1504ca6a9b5d8b0
+    current_runtime_image_id: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:93cbb4a11765ad92e9bbf1a1bb9601f15a540164b4e7d6647cb0f16d588ab6e0
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 276
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-monitoring-receiver-receiver-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:260fef5b0c1d8eafa29b661612511bdc3b869851b8a36d41a6cdfb5498f23ab4
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:260fef5b0c1d8eafa29b661612511bdc3b869851b8a36d41a6cdfb5498f23ab4
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-n8n-internal-proxy:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-odoo-internal-proxy:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-private-vicidial-ingress-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:269c6bd9b2713a27f8dc34a19a904bb0ba9d8f0f1564913576becd24779674d5
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-provisioning-service-provisioning-service-1:
+    repository: appolon1908-hue/codestra-provisioning-service
+    source_sha: UNKNOWN
+    current_runtime_image_id: sha256:db7dfcf1d8547d9daa9f1e1b7f7f834b0138b95e15fce95345e4e2e1211ed578
+    candidate_image_digest: UNKNOWN
+    config_change: UNKNOWN
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:db7dfcf1d8547d9daa9f1e1b7f7f834b0138b95e15fce95345e4e2e1211ed578
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: UNKNOWN
+      external_delivery: UNKNOWN
+      social_publish: UNKNOWN
+      external_model_call: UNKNOWN
+      sms_delivery: UNKNOWN
+      email_delivery: UNKNOWN
+      pstn_dialing: UNKNOWN
+      n8n_provider_write: UNKNOWN
+    pr: 170
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-reseller-portal-portal-1:
+    repository: appolon1908-hue/codestra-production-platform
+    source_sha: UNKNOWN
+    current_runtime_image_id: sha256:7d7cf6318ac122f7e39ab679dec499dc1f6116129765903d44e42c74541ca12e
+    candidate_image_digest: UNKNOWN
+    config_change: UNKNOWN
+    migration_required: REVIEW_REQUIRED
+    restart_required: 'YES'
+    rollback_digest: sha256:7d7cf6318ac122f7e39ab679dec499dc1f6116129765903d44e42c74541ca12e
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: UNKNOWN
+      external_delivery: UNKNOWN
+      social_publish: UNKNOWN
+      external_model_call: UNKNOWN
+      sms_delivery: UNKNOWN
+      email_delivery: UNKNOWN
+      pstn_dialing: UNKNOWN
+      n8n_provider_write: UNKNOWN
+    pr: 170
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-reseller-portal-postgres-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-sms-api-api-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:49790449a1871a585456fe41bcb52dd614fb56f432907b9f5e7271e54306d6d7
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:49790449a1871a585456fe41bcb52dd614fb56f432907b9f5e7271e54306d6d7
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: true
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  codestra-sms-api-event-worker-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:65222db1296663c33f1bdac9ef5c8c305d2d4388ddca26e3306776821d2dbee9
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:65222db1296663c33f1bdac9ef5c8c305d2d4388ddca26e3306776821d2dbee9
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: true
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false
+  private-integration-gateway-1:
+    repository: appolon1908-hue/codestra-production-runtime-authority
+    source_sha: PENDING_PROTECTED_MERGE
+    candidate_branch_parent: 79734030cd4c15bf25cc5555bd1d0399eefdaec0
+    current_runtime_image_id: sha256:a9a1562f6d7b3557f480c2ffb513bd8bb472a2e0f0f01e0f9aa8bcc6e7fab8a0
+    candidate_image_digest: PENDING_PROTECTED_MERGE_BUILD
+    config_change: 'YES'
+    migration_required: 'NO'
+    restart_required: 'YES'
+    rollback_digest: sha256:a9a1562f6d7b3557f480c2ffb513bd8bb472a2e0f0f01e0f9aa8bcc6e7fab8a0
+    rollback_identity_type: LOCAL_CONTENT_DIGEST_REQUIRES_REGISTRY_PRESERVATION
+    capabilities:
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: true
+      email_delivery: true
+      pstn_dialing: true
+      n8n_provider_write: false
+    pr: 1
+    merge_sha: PENDING
+    deployment_authorized: false

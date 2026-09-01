@@ -1,0 +1,60 @@
+name: codestra-reseller-portal
+services:
+  postgres:
+    image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    env_file: ${PORTAL_ENV_FILE:-/etc/codestra/secrets/reseller-portal.env}
+    volumes: [portal_postgres:/var/lib/postgresql/data]
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+    read_only: true
+    tmpfs: [/tmp, /run/postgresql]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: [no-new-privileges:true]
+  portal:
+    build: {context: ../.., dockerfile: deploy/reseller-portal/Dockerfile}
+    restart: unless-stopped
+    env_file: ${PORTAL_ENV_FILE:-/etc/codestra/secrets/reseller-portal.env}
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports: ["127.0.0.1:18081:8080"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [edge, backend]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz')"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+  oidc-gateway:
+    image: quay.io/oauth2-proxy/oauth2-proxy@sha256:aa0bd8dd5ab0c78e4c91c92755ad573a5f92241f88138b4141b8ec803463b4fd
+    restart: unless-stopped
+    env_file: ${PORTAL_ENV_FILE:-/etc/codestra/secrets/reseller-portal.env}
+    command: ["--config=/etc/oauth2-proxy/oauth2-proxy.cfg"]
+    healthcheck:
+      test: ["CMD", "/bin/oauth2-proxy", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes: ["./oauth2-proxy.cfg:/etc/oauth2-proxy/oauth2-proxy.cfg:ro"]
+    depends_on:
+      portal: {condition: service_healthy}
+    networks:
+      edge: {aliases: [reseller-portal-gateway]}
+      backend: {}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  edge: {name: codestra_edge, external: true}
+  backend: {name: codestra_backend, external: true}
+volumes:
+  portal_postgres:

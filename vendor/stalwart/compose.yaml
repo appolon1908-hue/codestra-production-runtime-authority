@@ -1,0 +1,33 @@
+services:
+  stalwart:
+    image: stalwartlabs/stalwart@sha256:9ed1d343243b7aa72969e372a7240b7ddea07730781d4b68a0dc3d8d51c418bb
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - stalwart-etc:/etc/stalwart
+      - stalwart-data:/var/lib/stalwart
+    networks: [mail-private]
+    ports:
+      - "127.0.0.1:2587:587"
+      - "127.0.0.1:2993:993"
+      - "127.0.0.1:28080:8080"
+      - "127.0.0.1:28443:443"
+    environment:
+      STALWART_PUBLIC_URL: https://mail.test:28443
+    env_file:
+      - /etc/codestra/secrets/mail-platform/stalwart/runtime.env
+    healthcheck:
+      test: [CMD, /usr/local/bin/stalwart, --version]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mail-private:
+    ipam:
+      config:
+        - subnet: 10.254.43.0/28
+
+volumes:
+  stalwart-etc: {}
+  stalwart-data: {}
