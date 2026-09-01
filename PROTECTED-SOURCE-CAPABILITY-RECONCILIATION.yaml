@@ -1,0 +1,51 @@
+schema: codestra.protected-source-capability-reconciliation.v1
+recorded_at: '2026-09-01T17:15:00-04:00'
+based_on_runtime_authority_merge: bd99e533e46b36f018a990f0c742643534e08f88
+production_changed: false
+runtime_verified: false
+purpose: >-
+  Resolve source-level capability UNKNOWN values using protected merge identities.
+  This overlay does not alter or supersede the immutable runtime capture and is
+  not evidence that any protected source revision is deployed.
+workloads:
+  codestra-beyvra-email-api-1:
+    repository: Codestra-SRL/codestra-middleware
+    protected_source_sha: eff30875864d6c9fa2ca789e9fc5fd906d51b729
+    source_status: PROTECTED_MERGE
+    capabilities: &email_capabilities
+      advertising_write: false
+      external_delivery: true
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: true
+      pstn_dialing: false
+      n8n_provider_write: false
+  codestra-email-reseller-api-1:
+    repository: appolon1908-hue/codestra-production-platform
+    protected_source_sha: 46463acbbf3e4df95926ac2e0ea8baae9a4abfa5
+    source_status: PROTECTED_MERGE
+    capabilities: *email_capabilities
+  codestra-mail-api-mail-api-1:
+    repository: appolon1908-hue/codestra-production-platform
+    protected_source_sha: a0593cb881654999f78e2c40d6f9784a5507d987
+    source_status: PROTECTED_MERGE
+    capabilities: *email_capabilities
+  codestra-provisioning-service-provisioning-service-1:
+    repository: appolon1908-hue/codestra-provisioning-service
+    protected_source_sha: 2c18e395e9f86f7510f142188336e9114aa213a4
+    source_status: PROTECTED_MERGE
+    capabilities: *email_capabilities
+  codestra-reseller-portal-portal-1:
+    repository: appolon1908-hue/codestra-production-platform
+    protected_source_sha: 9d2805ca397b7fdafab0e913cd442126fe1391d2
+    source_status: PROTECTED_MERGE
+    capabilities:
+      advertising_write: false
+      external_delivery: false
+      social_publish: false
+      external_model_call: false
+      sms_delivery: false
+      email_delivery: false
+      pstn_dialing: false
+      n8n_provider_write: false
