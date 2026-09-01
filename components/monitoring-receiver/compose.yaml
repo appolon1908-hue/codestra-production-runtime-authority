@@ -2,6 +2,7 @@ name: codestra-monitoring-receiver
 services:
   receiver:
     build: .
+    image: ghcr.io/appolon1908-hue/monitoring-receiver@sha256:dcadb718f4d930d8de4a01e41c29053a8f62afd267ef38d2e1eb64c428110927
     user: "0:0"
     restart: unless-stopped
     networks: [edge]
