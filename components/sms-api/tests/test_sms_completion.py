@@ -38,8 +38,8 @@ class SmsCompletionTests(unittest.TestCase):
     def test_segment_boundaries(self):
         self.assertEqual(main.segments("a" * 160), 1)
         self.assertEqual(main.segments("a" * 161), 2)
-        self.assertEqual(main.segments("é" * 70), 1)
-        self.assertEqual(main.segments("é" * 71), 2)
+        self.assertEqual(main.segments("漢" * 70), 1)
+        self.assertEqual(main.segments("漢" * 71), 2)
         self.assertEqual(main.segments("^" * 80), 1)
         self.assertEqual(main.segments("^" * 81), 2)
         self.assertEqual(main.segments("{" * 160), 3)

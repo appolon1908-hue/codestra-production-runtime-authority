@@ -2,6 +2,7 @@ name: private-app-integration
 services:
   gateway:
     build: .
+    image: ghcr.io/appolon1908-hue/private-integration-gateway@sha256:2f1d8ea4d95b3a994e2b8c6b2c1c2c27a69eeac30b38b129cb8a1a1195e894e2
     restart: unless-stopped
     env_file: /etc/kyqra-telnexa-integration/shared.env
     read_only: true
