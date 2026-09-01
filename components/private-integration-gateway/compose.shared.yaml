@@ -1,0 +1,27 @@
+name: private-app-integration
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    env_file: /etc/kyqra-telnexa-integration/shared.env
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    volumes:
+      - gateway_data:/data
+    ports:
+      - "10.40.0.2:3100:8080"
+      - "10.40.0.2:8443:8080"
+    networks: [private_api]
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:8080/health]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+networks:
+  private_api:
+    driver: bridge
+volumes:
+  gateway_data:

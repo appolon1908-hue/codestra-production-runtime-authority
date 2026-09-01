@@ -17,7 +17,7 @@ components:
   kong-service-auth-adapter:
     workload: codestra-kong-service-auth-adapter-1
     source_root: /opt/codestra/kong-service-auth-adapter
-    source_status: REVIEWED_IMPORT_PENDING
+    source_status: REVIEWED_IMPORT_CANDIDATE
     captured_files:
       Dockerfile: 248e14181a155795a2fea827eb424595571aac15138323044d8916547417a787
       adapter.py: 0680c7d6ba8086f337df81fa1162aabd6ac9a0eb09a0d5cbfbc33863462b2ebe
@@ -25,7 +25,7 @@ components:
   monitoring-receiver:
     workload: codestra-monitoring-receiver-receiver-1
     source_root: /opt/codestra/operations/monitoring-receiver
-    source_status: REVIEWED_IMPORT_PENDING
+    source_status: REVIEWED_IMPORT_CANDIDATE
     captured_files:
       Dockerfile: 27800867881b0fb84feb06bb49ec2feb56ae753e806f13d66185c5767bb02ee9
       app.py: 01f3c72eb7dec33e65fec4f597b66349ba8da78c669ee57f4f3e192ce7772859
@@ -35,7 +35,7 @@ components:
       - codestra-sms-api-api-1
       - codestra-sms-api-event-worker-1
     source_root: /opt/codestra/sms-api
-    source_status: SANITIZED_IMPORT_PENDING
+    source_status: SANITIZED_IMPORT_CANDIDATE
     excluded_present_at_source:
       - .env
       - backups/
@@ -45,7 +45,7 @@ components:
   private-integration-gateway:
     workload: private-integration-gateway-1
     source_root: /opt/middleware/integration-gateway
-    source_status: REVIEWED_IMPORT_PENDING
+    source_status: REVIEWED_IMPORT_CANDIDATE
     captured_files:
       Dockerfile: 9eda035d56c107d5db01215418004759dec960d60c3f9df0f0faf395419351e5
       gateway.py: 82f9ca6ef58d399195a8223dd77754d33bce7cf9b1269182c779d10188e8dbda

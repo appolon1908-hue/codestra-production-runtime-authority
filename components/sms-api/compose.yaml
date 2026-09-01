@@ -1,0 +1,95 @@
+name: codestra-sms-api
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codestra_sms
+      POSTGRES_USER: codestra_sms
+      POSTGRES_PASSWORD: ${SMS_DB_PASSWORD:?required}
+    volumes:
+      - sms_db_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    networks: [sms_data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codestra_sms -d codestra_sms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: 512m
+    pids_limit: 128
+  api:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - /etc/codestra/secrets/kyqra-telnexa/middleware.env
+    environment:
+      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@sms-postgres:5432/codestra_sms
+      SMS_DLR_TOKEN: ${SMS_DLR_TOKEN:?required}
+      SMS_GATEWAY_TOKEN_SHA256_FILE: /run/auth-verifiers/sms_gateway_token.sha256
+      TELNEXA_BASE_URL: https://telnexa.internal.codestra.agency:8443
+      TELNEXA_CLIENT_CERT_FILE: /run/codestra-mtls/telnexa/client-fullchain.crt
+      TELNEXA_CLIENT_KEY_FILE: /run/codestra-mtls/telnexa/client.key
+      TELNEXA_CA_FILE: /run/codestra-mtls/telnexa/root-ca.crt
+      LIVE_SMS_DELIVERY: "false"
+      LIVE_SUBMISSION_ENABLED: "false"
+      GLOBAL_RATE_PER_MINUTE: "1000"
+      MAX_BODY_BYTES: "16384"
+    depends_on:
+      postgres: {condition: service_healthy}
+    volumes:
+      - /etc/codestra/mtls/clients/telnexa:/run/codestra-mtls/telnexa:ro
+      - /etc/codestra/auth-verifiers/sms-gateway-token.sha256:/run/auth-verifiers/sms_gateway_token.sha256:ro
+    networks: [sms_data, codestra_edge]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - "/tmp:size=16m,mode=1777"
+    mem_limit: 512m
+    pids_limit: 128
+  event-worker:
+    build: .
+    command: ["python", "-m", "app.event_worker"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    env_file:
+      - /etc/codestra/secrets/kyqra-telnexa/middleware.env
+    environment:
+      DATABASE_URL: postgresql://codestra_sms:${SMS_DB_PASSWORD}@sms-postgres:5432/codestra_sms
+      SMS_EVENT_CONTROL_PLANE_URL: http://codestra-integration-control-plane-api-1:8096/api/v1/events/telnexa
+      SMS_EVENT_MAX_ATTEMPTS: "5"
+      SMS_EVENT_TIMEOUT_SECONDS: "5"
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [sms_data, codestra_edge]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - "/tmp:size=16m,mode=1777"
+    mem_limit: 256m
+    pids_limit: 64
+volumes:
+  sms_db_data:
+networks:
+  sms_data:
+    name: codestra_sms_data
+    external: true
+  codestra_backend:
+    external: true
+    name: codestra_backend
+  codestra_edge:
+    external: true
