@@ -78,6 +78,15 @@ class SourceCapabilityReconciliationTest(unittest.TestCase):
             ].__setitem__("email_delivery", False)
         )
 
+    def test_required_ci_invokes_validator_and_mutation_suite(self):
+        workflow = (ROOT / ".github" / "workflows" / "authority.yml").read_text()
+        assert "python3 -m compileall -q scripts tests" in workflow
+        assert "python3 scripts/validate_source_capability_reconciliation.py" in workflow
+        assert (
+            'python3 -m unittest discover -s tests -p "test_*.py" -v'
+            in workflow
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

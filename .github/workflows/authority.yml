@@ -38,6 +38,11 @@ jobs:
           for path in pathlib.Path('.').rglob('*.yaml'):
               yaml.safe_load(path.read_text())
           PY
+      - name: Validate protected source capability reconciliation
+        run: |
+          python3 -m compileall -q scripts tests
+          python3 scripts/validate_source_capability_reconciliation.py
+          python3 -m unittest discover -s tests -p "test_*.py" -v
 
   security:
     runs-on: ubuntu-latest
