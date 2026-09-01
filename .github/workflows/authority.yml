@@ -1,0 +1,41 @@
+name: authority
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject forbidden runtime material
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(find . -type f \
+            \( -name '.env' -o -name '.env.*' -o -name '*.key' \
+               -o -name '*.pem' -o -name '*.p12' -o -name '*.pfx' \
+               -o -name '*.dump' -o -name '*.sql.gz' \) -print)"
+          test -z "$forbidden" || { printf '%s\n' "$forbidden"; exit 1; }
+      - name: Validate YAML
+        run: |
+          python -m pip install --disable-pip-version-check pyyaml
+          python - <<'PY'
+          import pathlib, yaml
+          for path in pathlib.Path('.').rglob('*.yaml'):
+              yaml.safe_load(path.read_text())
+          PY
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+

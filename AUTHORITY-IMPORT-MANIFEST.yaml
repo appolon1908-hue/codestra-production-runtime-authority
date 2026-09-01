@@ -1,0 +1,53 @@
+schema: codestra.production-runtime-authority-import.v1
+captured_at: "2026-09-01T12:00:00-04:00"
+production_changed: false
+business_writes_enabled: false
+authority_status: CANDIDATE_PENDING_REVIEW
+
+excluded_globally:
+  - credentials and tokens
+  - environment value files
+  - private keys and certificates
+  - logs and generated evidence
+  - databases and backup payloads
+  - cache and compiled bytecode
+  - machine-specific state
+
+components:
+  kong-service-auth-adapter:
+    workload: codestra-kong-service-auth-adapter-1
+    source_root: /opt/codestra/kong-service-auth-adapter
+    source_status: REVIEWED_IMPORT_PENDING
+    captured_files:
+      Dockerfile: 248e14181a155795a2fea827eb424595571aac15138323044d8916547417a787
+      adapter.py: 0680c7d6ba8086f337df81fa1162aabd6ac9a0eb09a0d5cbfbc33863462b2ebe
+      compose.yaml: a1607234ea6044e66a013761e3e6421974b46387d2902a5e0bf8833475c8a30d
+  monitoring-receiver:
+    workload: codestra-monitoring-receiver-receiver-1
+    source_root: /opt/codestra/operations/monitoring-receiver
+    source_status: REVIEWED_IMPORT_PENDING
+    captured_files:
+      Dockerfile: 27800867881b0fb84feb06bb49ec2feb56ae753e806f13d66185c5767bb02ee9
+      app.py: 01f3c72eb7dec33e65fec4f597b66349ba8da78c669ee57f4f3e192ce7772859
+      compose.yaml: 46f251dcb0b0d649725153c71f9d6f75e923f3df7b67bcad2481ad95fad56af4
+  sms-api:
+    workloads:
+      - codestra-sms-api-api-1
+      - codestra-sms-api-event-worker-1
+    source_root: /opt/codestra/sms-api
+    source_status: SANITIZED_IMPORT_PENDING
+    excluded_present_at_source:
+      - .env
+      - backups/
+      - evidence/
+      - tests/synthetic.keys
+      - .pytest_cache/
+  private-integration-gateway:
+    workload: private-integration-gateway-1
+    source_root: /opt/middleware/integration-gateway
+    source_status: REVIEWED_IMPORT_PENDING
+    captured_files:
+      Dockerfile: 9eda035d56c107d5db01215418004759dec960d60c3f9df0f0faf395419351e5
+      gateway.py: 82f9ca6ef58d399195a8223dd77754d33bce7cf9b1269182c779d10188e8dbda
+      compose.yaml: 3a7754ecd7afb5009fe6dc3a9b1bb16ccb26f0fd4add4fafa5c03169aa686efb
+      compose.shared.yaml: 7cde7dcd427cf46ffc3c825871beed5951b2fdd4b02993fcb7302abab3a107ee
