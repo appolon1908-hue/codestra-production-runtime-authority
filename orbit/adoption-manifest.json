@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "2.0.0",
+  "repository": "appolon1908-hue/codestra-production-runtime-authority",
+  "classification": "runtime-infrastructure",
+  "targetBranch": "codex/codestra-orbit-v2-codestra-production-runtime-authority",
+  "adoptionMode": "contract-only",
+  "domain": null,
+  "domainStatus": "not-applicable",
+  "requirements": {
+    "noCompetingUiSource": true,
+    "repositoryAuthority": true,
+    "packageDigestLocks": true,
+    "immutableArtifacts": true,
+    "domainAndIdentityLocks": true,
+    "runtimeReadback": true,
+    "safetyFlags": true,
+    "monitoring": true,
+    "rollback": true,
+    "separateProductionApproval": true
+  },
+  "status": "branch-created",
+  "blockers": [
+    "SDK-repository pull request 75 must complete protected review before Orbit package digests are production authority.",
+    "Bind every runtime workload to repository PR, image/artifact digest, domain, identity client, route, safety flags, migrations, monitoring, staging evidence, and rollback.",
+    "Reject floating refs and source/runtime drift; production activation remains a separately approved operation."
+  ]
+}
