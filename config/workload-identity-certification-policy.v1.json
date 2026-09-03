@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "expected_identities": 64,
+  "allowed_authentication_methods": [
+    "jwt-workload-identity",
+    "mtls-client-certificate",
+    "oidc-client-credentials"
+  ],
+  "maximum_token_ttl_seconds": 900,
+  "maximum_certificate_ttl_seconds": 3600,
+  "required_tests": [
+    "authenticated_positive",
+    "wrong_audience_denied",
+    "wrong_subject_denied",
+    "wrong_business_denied",
+    "wrong_application_denied",
+    "wrong_environment_denied",
+    "expired_credential_denied",
+    "revoked_credential_denied",
+    "cross_business_secret_denied"
+  ],
+  "forbidden_policy_patterns": [
+    "path \"*\"",
+    "kv-*/data/*",
+    "capabilities = [\"sudo\"]",
+    "root"
+  ],
+  "safety": {
+    "shared_wildcard_identity_allowed": false,
+    "long_lived_static_token_allowed": false,
+    "cross_business_access_allowed": false,
+    "provider_effect_authority_allowed": false,
+    "communications_delivery_authority_allowed": false,
+    "business_write_authority_allowed": false,
+    "financial_or_trading_mutation_authority_allowed": false
+  }
+}
