@@ -1,0 +1,264 @@
+name: Prometheus production runtime preflight
+
+on:
+  push:
+    branches:
+      - audit/prometheus-production-preflight-20260903
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prometheus-production-runtime-preflight
+  cancel-in-progress: false
+
+env:
+  TARGET_REPOSITORY: appolon1908-hue/Codestra-Prometheus
+  EXPECTED_SOURCE_SHA: 660b976e01caa64667bc63953f32187df26d4e75
+  EXPECTED_SOURCE_TREE: ade8a3c224e6fc7679ba833c5a9370554636ea60
+  EXPECTED_IMAGE: docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+
+jobs:
+  read-only-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PROM_HOST: ${{ secrets.PROMETHEUS_PRODUCTION_HOST }}
+      GENERIC_HOST: ${{ secrets.PRODUCTION_HOST }}
+      AUDIT_HOST: ${{ secrets.RUNTIME_AUDIT_HOST }}
+      SERVER37_HOST: ${{ secrets.SERVER37_HOST }}
+      PROM_USER: ${{ secrets.PROMETHEUS_PRODUCTION_USER }}
+      GENERIC_USER: ${{ secrets.PRODUCTION_USER }}
+      AUDIT_USER: ${{ secrets.RUNTIME_AUDIT_USER }}
+      SERVER37_USER: ${{ secrets.SERVER37_USER }}
+      PROM_KEY: ${{ secrets.PROMETHEUS_PRODUCTION_SSH_PRIVATE_KEY }}
+      GENERIC_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+      AUDIT_KEY: ${{ secrets.RUNTIME_AUDIT_SSH_KEY }}
+      SERVER37_KEY: ${{ secrets.SERVER37_SSH_PRIVATE_KEY }}
+      PROM_KNOWN_HOSTS: ${{ secrets.PROMETHEUS_PRODUCTION_KNOWN_HOSTS }}
+      GENERIC_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+      AUDIT_KNOWN_HOSTS: ${{ secrets.RUNTIME_AUDIT_KNOWN_HOSTS }}
+      SERVER37_KNOWN_HOSTS: ${{ secrets.SERVER37_KNOWN_HOSTS }}
+      PROM_PORT: ${{ vars.PROMETHEUS_PRODUCTION_SSH_PORT }}
+      GENERIC_PORT: ${{ vars.PRODUCTION_SSH_PORT }}
+      AUDIT_PORT: ${{ vars.RUNTIME_AUDIT_SSH_PORT }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Read back repository promotion and protection state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0755 evidence
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import urllib.request
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          repository = os.environ["TARGET_REPOSITORY"]
+          expected_tree = os.environ["EXPECTED_SOURCE_TREE"]
+          base = f"https://api.github.com/repos/{repository}"
+          headers = {"Accept": "application/vnd.github+json", "User-Agent": "codestra-prometheus-runtime-preflight"}
+
+          def get(path: str):
+              request = urllib.request.Request(base + path, headers=headers)
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.loads(response.read().decode())
+
+          branches = {}
+          for name in ("main", "production", "staging"):
+              item = get(f"/branches/{name}")
+              branches[name] = {
+                  "sha": item["commit"]["sha"],
+                  "tree": item["commit"]["commit"]["tree"]["sha"],
+                  "classic_protected": bool(item.get("protected")),
+              }
+
+          rulesets = get("/rulesets?per_page=100&includes_parents=true")
+          production_rulesets = []
+          for summary in rulesets:
+              detail = get(f"/rulesets/{summary['id']}?includes_parents=true")
+              ref = detail.get("conditions", {}).get("ref_name", {})
+              includes = ref.get("include", [])
+              if "refs/heads/production" in includes:
+                  production_rulesets.append({
+                      "id": detail.get("id"),
+                      "name": detail.get("name"),
+                      "enforcement": detail.get("enforcement"),
+                      "bypass_actors": detail.get("bypass_actors"),
+                      "include": includes,
+                      "rules": [rule.get("type") for rule in detail.get("rules", [])],
+                  })
+
+          source_pass = branches["main"]["tree"] == expected_tree and branches["production"]["tree"] == expected_tree
+          protection_pass = any(
+              item.get("enforcement") == "active"
+              and item.get("bypass_actors") == []
+              and {"deletion", "non_fast_forward", "pull_request"}.issubset(set(item.get("rules", [])))
+              for item in production_rulesets
+          )
+          evidence = {
+              "schema_version": "1.0",
+              "captured_at": datetime.now(UTC).isoformat(),
+              "repository": repository,
+              "expected_source_sha": os.environ["EXPECTED_SOURCE_SHA"],
+              "expected_source_tree": expected_tree,
+              "expected_image": os.environ["EXPECTED_IMAGE"],
+              "branches": branches,
+              "production_rulesets": production_rulesets,
+              "exact_tree_on_main_and_production": source_pass,
+              "production_protection": protection_pass,
+              "repository_gate": "PASS" if source_pass and protection_pass else "FAIL",
+              "server_modified": False,
+          }
+          Path("evidence/repository-preflight.json").write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+          Path("evidence/repository-gate.txt").write_text(evidence["repository_gate"] + "\n")
+          print(f"REPOSITORY_GATE={evidence['repository_gate']}")
+          print(f"EXACT_TREE_ON_MAIN_AND_PRODUCTION={source_pass}")
+          print(f"PRODUCTION_PROTECTION={protection_pass}")
+          PY
+
+      - name: Inspect production host without mutation
+        id: runtime
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          pick() {
+            local name value
+            for name in "$@"; do
+              value="${!name:-}"
+              if [[ -n "$value" ]]; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          host="$(pick PROM_HOST GENERIC_HOST AUDIT_HOST SERVER37_HOST || true)"
+          user="$(pick PROM_USER GENERIC_USER AUDIT_USER SERVER37_USER || true)"
+          key="$(pick PROM_KEY GENERIC_KEY AUDIT_KEY SERVER37_KEY || true)"
+          known_hosts="$(pick PROM_KNOWN_HOSTS GENERIC_KNOWN_HOSTS AUDIT_KNOWN_HOSTS SERVER37_KNOWN_HOSTS || true)"
+          port="$(pick PROM_PORT GENERIC_PORT AUDIT_PORT || true)"
+          host="${host:-37.27.128.39}"
+          port="${port:-22}"
+
+          {
+            printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            printf 'canonical_host=37.27.128.39\n'
+            printf 'selected_host=%s\n' "$host"
+            printf 'selected_port=%s\n' "$port"
+            printf 'user_present=%s\n' "$([[ -n "$user" ]] && echo true || echo false)"
+            printf 'ssh_key_present=%s\n' "$([[ -n "$key" ]] && echo true || echo false)"
+            printf 'known_hosts_present=%s\n' "$([[ -n "$known_hosts" ]] && echo true || echo false)"
+            printf 'server_modified=false\n'
+          } > evidence/credential-preflight.txt
+
+          missing=()
+          [[ -n "$user" ]] || missing+=(production_user)
+          [[ -n "$key" ]] || missing+=(production_ssh_private_key)
+          [[ -n "$known_hosts" ]] || missing+=(production_known_hosts)
+          if ((${#missing[@]})); then
+            printf 'RUNTIME_CREDENTIAL_GATE=FAIL missing=%s\n' "$(IFS=,; echo "${missing[*]}")" | tee evidence/runtime-result.txt
+            exit 1
+          fi
+          [[ "$host" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$user" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$port" =~ ^[0-9]{1,5}$ ]]
+
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$key" > "$HOME/.ssh/id_ed25519"
+          chmod 0600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$known_hosts" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/known_hosts"
+          ssh_options=(
+            -i "$HOME/.ssh/id_ed25519"
+            -p "$port"
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+
+          ssh "${ssh_options[@]}" "$user@$host" 'bash -s' > evidence/runtime-observation.txt <<'REMOTE'
+          set -Eeuo pipefail
+          printf 'RUNTIME_READ_ONLY_BEGIN\n'
+          printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          printf 'hostname='; hostname
+          printf 'identity='; id
+          printf 'kernel='; uname -srmo
+          printf 'server_modified=false\n'
+
+          if command -v docker >/dev/null 2>&1; then
+            printf 'docker_client='; docker version --format '{{.Client.Version}}' 2>/dev/null || true
+            printf 'docker_server='; docker version --format '{{.Server.Version}}' 2>/dev/null || true
+            printf 'PROMETHEUS_CONTAINERS_BEGIN\n'
+            docker ps -a --filter name=prometheus --format '{{.Names}}|{{.Image}}|{{.Status}}' 2>/dev/null || true
+            printf 'PROMETHEUS_CONTAINERS_END\n'
+            ids="$(docker ps -aq --filter name=prometheus 2>/dev/null || true)"
+            if [[ -n "$ids" ]]; then
+              printf 'PROMETHEUS_INSPECT_BEGIN\n'
+              docker inspect --format '{{.Name}}|image={{.Config.Image}}|status={{.State.Status}}|health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|started={{.State.StartedAt}}|cmd={{json .Config.Cmd}}|mounts={{range .Mounts}}{{.Type}}:{{.Name}}:{{.Source}}:{{.Destination}};{{end}}' $ids 2>/dev/null || true
+              printf 'PROMETHEUS_INSPECT_END\n'
+            fi
+            printf 'PROMETHEUS_VOLUMES_BEGIN\n'
+            docker volume ls --format '{{.Name}}' 2>/dev/null | grep -i prometheus || true
+            while IFS= read -r volume; do
+              [[ -n "$volume" ]] || continue
+              mountpoint="$(docker volume inspect --format '{{.Mountpoint}}' "$volume" 2>/dev/null || true)"
+              printf 'volume=%s mountpoint=%s\n' "$volume" "$mountpoint"
+              [[ -n "$mountpoint" ]] && df -Pk "$mountpoint" 2>/dev/null || true
+              [[ -n "$mountpoint" ]] && du -sk "$mountpoint" 2>/dev/null || true
+            done < <(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -i prometheus || true)
+            printf 'PROMETHEUS_VOLUMES_END\n'
+          else
+            printf 'docker=unavailable\n'
+          fi
+
+          printf 'LISTENERS_BEGIN\n'
+          ss -ltn 2>/dev/null | grep -E '(:9090|:9093|:9100|:9115|:9121|:8080)' || true
+          printf 'LISTENERS_END\n'
+
+          for path in /-/healthy /-/ready /metrics /api/v1/targets /api/v1/rules /api/v1/alerts /api/v1/status/flags /api/v1/status/tsdb; do
+            safe="$(printf '%s' "$path" | tr '/-' '__')"
+            code="$(curl --silent --show-error --max-time 8 --output "/tmp/prometheus-${safe}.out" --write-out '%{http_code}' "http://127.0.0.1:9090${path}" 2>/dev/null || printf '000')"
+            bytes="$(wc -c < "/tmp/prometheus-${safe}.out" 2>/dev/null || printf '0')"
+            printf 'endpoint=%s status=%s bytes=%s\n' "$path" "$code" "$bytes"
+          done
+          printf 'FILESYSTEM_BEGIN\n'
+          df -Pk / /var/lib/docker 2>/dev/null || df -Pk / 2>/dev/null || true
+          printf 'FILESYSTEM_END\n'
+          printf 'RUNTIME_READ_ONLY_END\n'
+          REMOTE
+
+          grep -q '^RUNTIME_READ_ONLY_END$' evidence/runtime-observation.txt
+          printf 'RUNTIME_CREDENTIAL_GATE=PASS\nSERVER_READ_ONLY_PREFLIGHT=PASS\n' | tee evidence/runtime-result.txt
+
+      - name: Upload sanitized preflight evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prometheus-production-runtime-preflight
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Enforce preflight stop conditions
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f evidence/repository-gate.txt
+          test "$(tr -d '\r\n' < evidence/repository-gate.txt)" = PASS
+          test "${{ steps.runtime.outcome }}" = success
+          grep -q '^RUNTIME_CREDENTIAL_GATE=PASS$' evidence/runtime-result.txt
+          printf 'PROMETHEUS_PRODUCTION_PREFLIGHT=PASS\n'
