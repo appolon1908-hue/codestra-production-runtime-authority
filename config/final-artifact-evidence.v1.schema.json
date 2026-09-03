@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codestra.media/schemas/final-artifact-evidence.v1.schema.json",
+  "title": "Codestra final artifact evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "artifacts", "summary", "safety"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "release_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{7,127}$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 64,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "observed", "critical_vulnerabilities", "high_vulnerabilities", "unsigned_artifacts", "missing_sboms", "missing_provenance", "mutable_images"],
+      "properties": {
+        "expected": {"const": 64},
+        "observed": {"const": 64},
+        "critical_vulnerabilities": {"const": 0},
+        "high_vulnerabilities": {"const": 0},
+        "unsigned_artifacts": {"const": 0},
+        "missing_sboms": {"const": 0},
+        "missing_provenance": {"const": 0},
+        "mutable_images": {"const": 0}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment_performed", "business_writes", "communications_delivery", "provider_effects", "financial_or_trading_mutation"],
+      "properties": {
+        "deployment_performed": {"const": false},
+        "business_writes": {"const": false},
+        "communications_delivery": {"const": false},
+        "provider_effects": {"const": false},
+        "financial_or_trading_mutation": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workload_id", "repository", "source_sha", "build_run", "image",
+        "image_digest", "architectures", "configuration_sha256", "signature",
+        "sbom", "provenance", "vulnerability_scan", "secret_scan",
+        "dependency_audit", "license_review", "attestation_verification",
+        "rollback_digest", "evidence_ref"
+      ],
+      "properties": {
+        "workload_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"},
+        "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "source_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "build_run": {"type": "string", "minLength": 8},
+        "image": {"type": "string", "pattern": "^[^ @]+@sha256:[0-9a-f]{64}$"},
+        "image_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "architectures": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["linux/amd64", "linux/arm64"]}},
+        "configuration_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "signature": {"$ref": "#/$defs/signature"},
+        "sbom": {"$ref": "#/$defs/sbom"},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "vulnerability_scan": {"$ref": "#/$defs/vulnerability"},
+        "secret_scan": {"const": "PASS"},
+        "dependency_audit": {"const": "PASS"},
+        "license_review": {"const": "PASS"},
+        "attestation_verification": {"const": "PASS"},
+        "rollback_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "evidence_ref": {"type": "string", "minLength": 8}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "certificate_identity", "certificate_oidc_issuer", "bundle_ref"],
+      "properties": {
+        "status": {"const": "PASS"},
+        "certificate_identity": {"type": "string", "minLength": 8},
+        "certificate_oidc_issuer": {"type": "string", "pattern": "^https://"},
+        "bundle_ref": {"type": "string", "minLength": 8}
+      }
+    },
+    "sbom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "format", "reference", "sha256"],
+      "properties": {
+        "status": {"const": "PASS"},
+        "format": {"enum": ["spdx-json", "cyclonedx-json"]},
+        "reference": {"type": "string", "minLength": 8},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "predicate_type", "reference"],
+      "properties": {
+        "status": {"const": "PASS"},
+        "predicate_type": {"enum": ["https://slsa.dev/provenance/v1", "https://slsa.dev/provenance/v1-rc1"]},
+        "reference": {"type": "string", "minLength": 8}
+      }
+    },
+    "vulnerability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "scanner", "database_updated_at", "critical", "high", "reference"],
+      "properties": {
+        "status": {"const": "PASS"},
+        "scanner": {"type": "string", "minLength": 2},
+        "database_updated_at": {"type": "string", "format": "date-time"},
+        "critical": {"const": 0},
+        "high": {"const": 0},
+        "reference": {"type": "string", "minLength": 8}
+      }
+    }
+  }
+}
