@@ -1,0 +1,101 @@
+name: Validate final signed artifact evidence
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "config/final-artifact-evidence.v1.schema.json"
+      - "config/final-artifact-verification-policy.v1.json"
+      - "tools/validate_final_artifact_evidence.py"
+      - "tests/test_final_artifact_evidence.py"
+      - ".github/workflows/validate-final-artifact-evidence.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/final-artifact-evidence.v1.schema.json"
+      - "config/final-artifact-verification-policy.v1.json"
+      - "tools/validate_final_artifact_evidence.py"
+      - "tests/test_final_artifact_evidence.py"
+      - ".github/workflows/validate-final-artifact-evidence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: final-artifact-evidence-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verifier-regressions:
+    name: Artifact evidence fail-closed regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+
+      - name: Compile and test artifact verifier
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile tools/validate_final_artifact_evidence.py
+          python3 -m unittest tests/test_final_artifact_evidence.py
+          python3 -m json.tool config/final-artifact-evidence.v1.schema.json >/dev/null
+          python3 -m json.tool config/final-artifact-verification-policy.v1.json >/dev/null
+          git diff --check
+
+  protected-final-artifact-gate:
+    name: Protected 64-artifact signature and attestation gate
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    needs:
+      - verifier-regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: production-artifact-evidence
+    steps:
+      - name: Check out exact protected source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Materialize bounded evidence input
+        env:
+          FINAL_ARTIFACT_EVIDENCE: ${{ secrets.CODESTRA_FINAL_ARTIFACT_EVIDENCE }}
+        run: |
+          set -Eeuo pipefail
+          test -n "${FINAL_ARTIFACT_EVIDENCE}"
+          printf '%s' "${FINAL_ARTIFACT_EVIDENCE}" > "${RUNNER_TEMP}/final-artifact-evidence.json"
+          chmod 0600 "${RUNNER_TEMP}/final-artifact-evidence.json"
+
+      - name: Validate exact artifact evidence
+        run: |
+          set -Eeuo pipefail
+          python3 tools/validate_final_artifact_evidence.py \
+            --evidence "${RUNNER_TEMP}/final-artifact-evidence.json" \
+            --result-output "${RUNNER_TEMP}/final-artifact-result.json"
+
+      - name: Delete raw evidence input
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/final-artifact-evidence.json"
+
+      - name: Upload bounded validation result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: final-artifact-result-${{ github.sha }}
+          path: ${{ runner.temp }}/final-artifact-result.json
+          if-no-files-found: error
+          retention-days: 30
