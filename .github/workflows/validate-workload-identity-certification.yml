@@ -1,0 +1,98 @@
+name: Validate workload identity certification evidence
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "config/workload-identity-certification-policy.v1.json"
+      - "tools/validate_workload_identity_certification.py"
+      - "tests/test_workload_identity_certification.py"
+      - ".github/workflows/validate-workload-identity-certification.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/workload-identity-certification-policy.v1.json"
+      - "tools/validate_workload_identity_certification.py"
+      - "tests/test_workload_identity_certification.py"
+      - ".github/workflows/validate-workload-identity-certification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workload-identity-certification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verifier-regressions:
+    name: Workload identity fail-closed regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+
+      - name: Compile and test workload identity verifier
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile tools/validate_workload_identity_certification.py
+          python3 -m unittest tests/test_workload_identity_certification.py
+          python3 -m json.tool config/workload-identity-certification-policy.v1.json >/dev/null
+          git diff --check
+
+  protected-identity-evidence:
+    name: Protected 64-workload identity gate
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    needs:
+      - verifier-regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: staging-readonly
+    steps:
+      - name: Check out exact protected source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Materialize bounded identity evidence
+        env:
+          WORKLOAD_IDENTITY_EVIDENCE: ${{ secrets.CODESTRA_WORKLOAD_IDENTITY_EVIDENCE }}
+        run: |
+          set -Eeuo pipefail
+          test -n "${WORKLOAD_IDENTITY_EVIDENCE}"
+          printf '%s' "${WORKLOAD_IDENTITY_EVIDENCE}" > "${RUNNER_TEMP}/workload-identity-evidence.json"
+          chmod 0600 "${RUNNER_TEMP}/workload-identity-evidence.json"
+
+      - name: Validate exact identity evidence
+        run: |
+          set -Eeuo pipefail
+          python3 tools/validate_workload_identity_certification.py \
+            --evidence "${RUNNER_TEMP}/workload-identity-evidence.json" \
+            --result-output "${RUNNER_TEMP}/workload-identity-result.json"
+
+      - name: Delete raw identity evidence
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/workload-identity-evidence.json"
+
+      - name: Upload bounded validation result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: workload-identity-result-${{ github.sha }}
+          path: ${{ runner.temp }}/workload-identity-result.json
+          if-no-files-found: error
+          retention-days: 30
