@@ -12,12 +12,7 @@
   "runtime_coverage": "unverified",
   "activation_enabled": false,
   "required_identity_fields": [
-    "service_id",
-    "environment",
-    "tenant_id",
-    "source_deployment",
     "git_sha",
-    "image_digest",
     "config_digest"
   ],
   "signal_owners": {
@@ -39,11 +34,9 @@
   "completion_evidence_required": [
     "exact_commit_ci",
     "approved_release",
-    "registered_service_units",
-    "fresh_telemetry",
-    "endpoint_contract_digest",
-    "private_authentication",
-    "alert_delivery",
-    "restore_and_rollback"
-  ]
+    "repository_ownership",
+    "dependency_inventory"
+  ],
+  "repository_id": 1353559375,
+  "runtime_onboarding_allowed": false
 }
