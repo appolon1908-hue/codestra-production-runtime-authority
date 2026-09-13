@@ -46,6 +46,7 @@ def artifact(index: int, marker: str) -> dict:
         "configuration_sha256": marker * 64,
         "signature": {
             "status": "PASS",
+            "subject_image": f"ghcr.io/example/{name}@{digest}",
             "certificate_identity": f"https://github.com/example/{name}/.github/workflows/release.yml@refs/heads/production",
             "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
             "bundle_ref": f"oci://signature/{name}/{marker * 16}",
@@ -58,6 +59,9 @@ def artifact(index: int, marker: str) -> dict:
         },
         "provenance": {
             "status": "PASS",
+            "subject_image": f"ghcr.io/example/{name}@{digest}",
+            "source_repository": f"example/{name}",
+            "source_sha": marker * 40,
             "predicate_type": "https://slsa.dev/provenance/v1",
             "reference": f"oci://provenance/{name}/{marker * 16}",
         },
@@ -103,56 +107,152 @@ def evidence() -> dict:
     }
 
 
+def matrix(value: dict) -> dict:
+    candidates = {}
+    for item in value["artifacts"]:
+        candidates[item["workload_id"]] = {
+            "schema_version": 1,
+            "workload_id": item["workload_id"],
+            "repository": item["repository"],
+            "protected_source_sha": item["source_sha"],
+            "image": item["image"],
+            "image_digest": item["image_digest"],
+            "signature": {
+                "status": "PASS",
+                "reference": item["signature"]["bundle_ref"],
+                "subject_image": item["signature"]["subject_image"],
+            },
+            "sbom": {
+                "status": "PASS",
+                "reference": item["sbom"]["reference"],
+                "sha256": item["sbom"]["sha256"],
+            },
+            "provenance": {
+                "status": "PASS",
+                "reference": item["provenance"]["reference"],
+                "subject_image": item["provenance"]["subject_image"],
+                "source_repository": item["provenance"]["source_repository"],
+                "source_sha": item["provenance"]["source_sha"],
+            },
+            "vulnerability_scan": {
+                "status": "PASS",
+                "critical": 0,
+                "high": 0,
+                "reference": item["vulnerability_scan"]["reference"],
+            },
+            "configuration_sha256": item["configuration_sha256"],
+            "rollback_digest": item["rollback_digest"],
+            "exact_head_ci": "PASS",
+            "independent_review": "PASS",
+            "staging_certification": "PASS",
+            "runtime_identity": {
+                "source_sha_readback": item["source_sha"],
+                "image_digest_readback": item["image_digest"],
+            },
+            "safety": {
+                "business_writes": False,
+                "communications_delivery": False,
+                "provider_effects": False,
+                "financial_or_trading_mutation": False,
+            },
+        }
+    return {
+        "schema": "codestra.immutable-candidate-matrix.v1",
+        "captured_at": "2026-09-03T16:00:00Z",
+        "production_changed": False,
+        "deployment_authorized": True,
+        "candidates": candidates,
+    }
+
+
 class ArtifactEvidenceTests(unittest.TestCase):
+    def validate(self, value: dict, matrix_value: dict | None = None) -> dict:
+        return module.validate(
+            value,
+            policy(),
+            matrix=matrix_value or matrix(value),
+            matrix_schema=module.load_json(ROOT / "config" / "immutable-workload-evidence.v1.schema.json"),
+            authority_sha="d" * 40,
+            now=NOW,
+        )
+
     def test_complete_evidence_passes(self) -> None:
-        result = module.validate(evidence(), policy(), now=NOW)
+        result = self.validate(evidence())
         self.assertEqual(result["status"], "PASS")
         self.assertEqual(len(result["artifacts"]), 2)
 
     def test_exact_count_required(self) -> None:
         value = evidence(); value["artifacts"].pop()
         with self.assertRaisesRegex(module.ArtifactError, "exactly 2"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_mutable_image_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["image"] = "ghcr.io/example/workload-00:latest"
         with self.assertRaisesRegex(module.ArtifactError, "repository@sha256"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_digest_mismatch_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["image_digest"] = "sha256:" + "c" * 64
         with self.assertRaisesRegex(module.ArtifactError, "disagree"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_unapproved_signature_issuer_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["signature"]["certificate_oidc_issuer"] = "https://issuer.invalid"
         with self.assertRaisesRegex(module.ArtifactError, "approved issuer"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_missing_sbom_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["sbom"]["status"] = "PENDING"
         with self.assertRaises(module.ArtifactError):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_stale_vulnerability_database_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["vulnerability_scan"]["database_updated_at"] = "2026-08-20T00:00:00Z"
         with self.assertRaisesRegex(module.ArtifactError, "stale"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_high_vulnerability_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["vulnerability_scan"]["high"] = 1
         with self.assertRaisesRegex(module.ArtifactError, "exceeds policy"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_noop_rollback_rejected(self) -> None:
         value = evidence(); value["artifacts"][0]["rollback_digest"] = value["artifacts"][0]["image_digest"]
         with self.assertRaisesRegex(module.ArtifactError, "must differ"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
 
     def test_safety_effect_rejected(self) -> None:
         value = evidence(); value["safety"]["deployment_performed"] = True
         with self.assertRaisesRegex(module.ArtifactError, "must remain false"):
-            module.validate(value, policy(), now=NOW)
+            self.validate(value)
+
+    def test_stale_source_is_rejected_against_matrix(self) -> None:
+        value = evidence()
+        matrix_value = matrix(value)
+        value["artifacts"][0]["source_sha"] = "c" * 40
+        value["artifacts"][0]["provenance"]["source_sha"] = "c" * 40
+        with self.assertRaisesRegex(module.ArtifactError, "source_sha differs"):
+            self.validate(value, matrix_value)
+
+    def test_configuration_is_rejected_against_matrix(self) -> None:
+        value = evidence()
+        matrix_value = matrix(value)
+        value["artifacts"][0]["configuration_sha256"] = "c" * 64
+        with self.assertRaisesRegex(module.ArtifactError, "configuration_sha256 differs"):
+            self.validate(value, matrix_value)
+
+    def test_signature_subject_is_bound(self) -> None:
+        value = evidence()
+        value["artifacts"][0]["signature"]["subject_image"] = value["artifacts"][1]["image"]
+        with self.assertRaisesRegex(module.ArtifactError, "subject_image differs"):
+            self.validate(value)
+
+    def test_unauthorized_matrix_is_rejected(self) -> None:
+        value = evidence()
+        matrix_value = matrix(value)
+        matrix_value["deployment_authorized"] = False
+        with self.assertRaisesRegex(module.ArtifactError, "matrix is blocked"):
+            self.validate(value, matrix_value)
 
 
 if __name__ == "__main__":

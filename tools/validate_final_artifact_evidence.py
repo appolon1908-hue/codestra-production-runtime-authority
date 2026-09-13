@@ -8,8 +8,10 @@ It does not build, pull, sign, scan, attest, publish, deploy, or contact a runti
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +20,15 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "config" / "final-artifact-verification-policy.v1.json"
+DEFAULT_MATRIX = ROOT / "IMMUTABLE-CANDIDATE-MATRIX.yaml"
+DEFAULT_MATRIX_SCHEMA = ROOT / "config" / "immutable-workload-evidence.v1.schema.json"
+TOOLS = Path(__file__).resolve().parent
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+from validate_immutable_candidate_matrix_final import (  # noqa: E402
+    canonical_candidates,
+    validate as validate_candidate_matrix,
+)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -103,8 +114,10 @@ def require_pass(value: Any, path: str) -> None:
         raise ArtifactError(f"{path} must be PASS")
 
 
-def validate_signature(value: Any, path: str, policy: dict[str, Any]) -> dict[str, str]:
-    required = {"status", "certificate_identity", "certificate_oidc_issuer", "bundle_ref"}
+def validate_signature(
+    value: Any, path: str, policy: dict[str, Any], expected_image: str
+) -> dict[str, str]:
+    required = {"status", "subject_image", "certificate_identity", "certificate_oidc_issuer", "bundle_ref"}
     if not isinstance(value, dict) or set(value) != required:
         raise ArtifactError(f"{path} fields are incomplete or unexpected")
     require_pass(value.get("status"), f"{path}.status")
@@ -114,6 +127,8 @@ def validate_signature(value: Any, path: str, policy: dict[str, Any]) -> dict[st
         raise ArtifactError(f"{path}.certificate_oidc_issuer is not the approved issuer")
     if not identity.startswith(policy["required_certificate_identity_prefix"]):
         raise ArtifactError(f"{path}.certificate_identity is outside the approved GitHub authority")
+    if value.get("subject_image") != expected_image:
+        raise ArtifactError(f"{path}.subject_image differs from the artifact image")
     require_reference(value.get("bundle_ref"), f"{path}.bundle_ref")
     return dict(value)
 
@@ -132,13 +147,29 @@ def validate_sbom(value: Any, path: str, policy: dict[str, Any]) -> dict[str, st
     return dict(value)
 
 
-def validate_provenance(value: Any, path: str, policy: dict[str, Any]) -> dict[str, str]:
-    required = {"status", "predicate_type", "reference"}
+def validate_provenance(
+    value: Any,
+    path: str,
+    policy: dict[str, Any],
+    expected_image: str,
+    expected_repository: str,
+    expected_source_sha: str,
+) -> dict[str, str]:
+    required = {
+        "status", "subject_image", "source_repository", "source_sha",
+        "predicate_type", "reference",
+    }
     if not isinstance(value, dict) or set(value) != required:
         raise ArtifactError(f"{path} fields are incomplete or unexpected")
     require_pass(value.get("status"), f"{path}.status")
     if value.get("predicate_type") != policy["required_provenance_predicate"]:
         raise ArtifactError(f"{path}.predicate_type is not the required SLSA predicate")
+    if value.get("subject_image") != expected_image:
+        raise ArtifactError(f"{path}.subject_image differs from the artifact image")
+    if value.get("source_repository") != expected_repository:
+        raise ArtifactError(f"{path}.source_repository differs from the artifact repository")
+    if value.get("source_sha") != expected_source_sha:
+        raise ArtifactError(f"{path}.source_sha differs from the artifact source")
     require_reference(value.get("reference"), f"{path}.reference")
     return dict(value)
 
@@ -215,9 +246,11 @@ def validate_artifact(value: Any, index: int, policy: dict[str, Any], now: datet
     require_reference(value.get("evidence_ref"), f"{path}.evidence_ref")
 
     normalized = dict(value)
-    normalized["signature"] = validate_signature(value.get("signature"), f"{path}.signature", policy)
+    normalized["signature"] = validate_signature(value.get("signature"), f"{path}.signature", policy, image)
     normalized["sbom"] = validate_sbom(value.get("sbom"), f"{path}.sbom", policy)
-    normalized["provenance"] = validate_provenance(value.get("provenance"), f"{path}.provenance", policy)
+    normalized["provenance"] = validate_provenance(
+        value.get("provenance"), f"{path}.provenance", policy, image, repository, source_sha
+    )
     normalized["vulnerability_scan"] = validate_vulnerability(
         value.get("vulnerability_scan"), f"{path}.vulnerability_scan", policy, now
     )
@@ -253,8 +286,72 @@ def validate_safety(value: Any) -> dict[str, bool]:
     return {name: False for name in sorted(required)}
 
 
-def validate(evidence: dict[str, Any], policy: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
+def bind_artifacts_to_matrix(
+    artifacts: list[dict[str, Any]],
+    matrix: dict[str, Any],
+    matrix_schema: dict[str, Any],
+    expected: int,
+) -> None:
+    matrix_result = validate_candidate_matrix(
+        matrix, matrix_schema, expected=expected, require_authorized=True
+    )
+    if matrix_result["status"] != "PASS":
+        codes = sorted({item["code"] for item in matrix_result["findings"]})
+        raise ArtifactError(f"immutable candidate matrix is blocked: {','.join(codes)}")
+
+    candidates = canonical_candidates(matrix)
+    artifact_ids = {item["workload_id"] for item in artifacts}
+    if artifact_ids != set(candidates):
+        raise ArtifactError("artifact workload IDs differ from the immutable candidate matrix")
+
+    comparisons = {
+        "repository": "repository",
+        "source_sha": "protected_source_sha",
+        "image": "image",
+        "image_digest": "image_digest",
+        "configuration_sha256": "configuration_sha256",
+        "rollback_digest": "rollback_digest",
+    }
+    for artifact in artifacts:
+        workload = artifact["workload_id"]
+        candidate = candidates[workload]
+        for artifact_field, candidate_field in comparisons.items():
+            if artifact[artifact_field] != candidate[candidate_field]:
+                raise ArtifactError(
+                    f"artifacts[{workload}].{artifact_field} differs from the immutable candidate matrix"
+                )
+        for family in ("signature", "provenance"):
+            if artifact[family]["subject_image"] != candidate[family]["subject_image"]:
+                raise ArtifactError(
+                    f"artifacts[{workload}].{family}.subject_image differs from the immutable candidate matrix"
+                )
+        provenance = artifact["provenance"]
+        candidate_provenance = candidate["provenance"]
+        for field in ("source_repository", "source_sha"):
+            if provenance[field] != candidate_provenance[field]:
+                raise ArtifactError(
+                    f"artifacts[{workload}].provenance.{field} differs from the immutable candidate matrix"
+                )
+
+
+def validate(
+    evidence: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    matrix: dict[str, Any],
+    matrix_schema: dict[str, Any],
+    authority_sha: str,
+    matrix_sha256: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
     reject_sensitive_or_unresolved(evidence)
+    if not isinstance(authority_sha, str) or not SHA_RE.fullmatch(authority_sha):
+        raise ArtifactError("authority_sha must be the exact checked-out 40-character commit")
+    if matrix_sha256 is None:
+        canonical = json.dumps(matrix, sort_keys=True, separators=(",", ":")).encode()
+        matrix_sha256 = hashlib.sha256(canonical).hexdigest()
+    if not HEX64_RE.fullmatch(matrix_sha256):
+        raise ArtifactError("matrix_sha256 is invalid")
     required_root = {"schema_version", "release_id", "artifacts", "summary", "safety"}
     if set(evidence) != required_root or evidence.get("schema_version") != 1:
         raise ArtifactError("evidence root fields are incomplete or unexpected")
@@ -277,10 +374,13 @@ def validate(evidence: dict[str, Any], policy: dict[str, Any], now: datetime | N
         raise ArtifactError("workload IDs must be unique")
     if len(images) != len(set(images)) or len(digests) != len(set(digests)):
         raise ArtifactError("final image references and digests must be unique per workload")
+    bind_artifacts_to_matrix(artifacts, matrix, matrix_schema, expected)
     return {
         "schema_version": 1,
         "status": "PASS",
         "release_id": release_id,
+        "authority_source_sha": authority_sha,
+        "immutable_matrix_sha256": matrix_sha256,
         "artifacts": sorted(artifacts, key=lambda item: item["workload_id"]),
         "summary": validate_summary(evidence.get("summary"), expected),
         "safety": validate_safety(evidence.get("safety")),
@@ -295,6 +395,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
+    parser.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
+    parser.add_argument("--matrix-schema", type=Path, default=DEFAULT_MATRIX_SCHEMA)
+    parser.add_argument("--authority-sha")
     parser.add_argument("--result-output", type=Path)
     return parser.parse_args()
 
@@ -302,8 +405,31 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        result = validate(load_json(args.evidence), load_json(args.policy))
-    except ArtifactError as exc:
+        import yaml
+    except ImportError as exc:
+        print("FINAL_ARTIFACT_EVIDENCE=BLOCKED", file=sys.stderr)
+        print(f"BLOCKER={exc}", file=sys.stderr)
+        return 2
+    try:
+        checked_out_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+        authority_sha = args.authority_sha or checked_out_head
+        if checked_out_head != authority_sha:
+            raise ArtifactError("authority_sha differs from the checked-out exact head")
+        matrix_bytes = args.matrix.read_bytes()
+        matrix = yaml.safe_load(matrix_bytes)
+        matrix_schema = load_json(args.matrix_schema)
+        result = validate(
+            load_json(args.evidence),
+            load_json(args.policy),
+            matrix=matrix,
+            matrix_schema=matrix_schema,
+            authority_sha=authority_sha,
+            matrix_sha256=hashlib.sha256(matrix_bytes).hexdigest(),
+        )
+    except (ArtifactError, OSError, yaml.YAMLError, subprocess.SubprocessError) as exc:
         print("FINAL_ARTIFACT_EVIDENCE=BLOCKED", file=sys.stderr)
         print(f"BLOCKER={exc}", file=sys.stderr)
         return 2

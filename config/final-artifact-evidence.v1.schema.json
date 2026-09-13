@@ -77,9 +77,10 @@
     "signature": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "certificate_identity", "certificate_oidc_issuer", "bundle_ref"],
+      "required": ["status", "subject_image", "certificate_identity", "certificate_oidc_issuer", "bundle_ref"],
       "properties": {
         "status": {"const": "PASS"},
+        "subject_image": {"type": "string", "pattern": "^[^ @]+@sha256:[0-9a-f]{64}$"},
         "certificate_identity": {"type": "string", "minLength": 8},
         "certificate_oidc_issuer": {"type": "string", "pattern": "^https://"},
         "bundle_ref": {"type": "string", "minLength": 8}
@@ -99,9 +100,12 @@
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "predicate_type", "reference"],
+      "required": ["status", "subject_image", "source_repository", "source_sha", "predicate_type", "reference"],
       "properties": {
         "status": {"const": "PASS"},
+        "subject_image": {"type": "string", "pattern": "^[^ @]+@sha256:[0-9a-f]{64}$"},
+        "source_repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "source_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "predicate_type": {"enum": ["https://slsa.dev/provenance/v1", "https://slsa.dev/provenance/v1-rc1"]},
         "reference": {"type": "string", "minLength": 8}
       }

@@ -10,9 +10,9 @@ The protected matrix must contain exactly 64 unique workload identities. Every w
 - protected 40-character source SHA;
 - immutable `repository@sha256:<digest>` image;
 - matching standalone image digest;
-- signature verification reference;
+- signature verification reference and exact image subject;
 - SBOM reference and checksum;
-- provenance or build-attestation reference;
+- provenance or build-attestation reference bound to the exact image, repository, and protected source SHA;
 - zero unresolved critical/high vulnerability result;
 - configuration checksum;
 - previous exact rollback digest that differs from the candidate;
@@ -35,7 +35,7 @@ The protected matrix must contain exactly 64 unique workload identities. Every w
 
 ## Fail-closed behavior
 
-`UNKNOWN`, `PENDING`, `NONE`, local-only image IDs, mutable tags, missing signatures, missing SBOM/provenance, no-op rollback, fewer or more than 64 identities, and `deployment_authorized=false` all block the final gate. The validator never edits evidence or contacts a runtime.
+`UNKNOWN`, `PENDING`, `NONE`, local-only image IDs, mutable tags, missing signatures, missing SBOM/provenance, no-op rollback, mismatched runtime readbacks, fewer or more than 64 identities, and `deployment_authorized=false` all block the final gate. Authorization is accepted only from the canonical root field; nested authorization fields are prohibited. Final artifact evidence is cross-checked against the exact protected matrix and checked-out authority commit. The validators never edit evidence or contact a runtime.
 
 ## Separation of authority
 

@@ -10,26 +10,13 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
-SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-IMAGE_RE = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
+DEFAULT_SCHEMA = ROOT / "config" / "immutable-workload-evidence.v1.schema.json"
 FORBIDDEN = {
     "UNKNOWN", "PENDING", "NOT_STARTED", "NOT_RUN", "NONE", "TBD",
-    "TODO", "REPLACE_ME", "UNRESOLVED", "UNVERIFIED", "LOCAL_ONLY"
+    "TODO", "REPLACE_ME", "UNRESOLVED", "UNVERIFIED", "LOCAL_ONLY",
 }
-ID_KEYS = {"workload", "workload_id", "id", "name", "service", "component"}
-REPO_KEYS = {"repository", "repo", "source_repository", "source_repo"}
-SHA_KEYS = {"source_sha", "protected_source_sha", "git_sha", "commit_sha", "revision"}
-IMAGE_KEYS = {"image", "image_ref", "image_reference", "oci_image"}
-DIGEST_KEYS = {"image_digest", "digest", "oci_digest"}
-ROLLBACK_KEYS = {"rollback_digest", "previous_digest", "rollback_image_digest"}
-SIGNATURE_KEYS = {"signature", "signature_ref", "signature_reference", "cosign_bundle"}
-SBOM_KEYS = {"sbom", "sbom_ref", "sbom_reference"}
-PROVENANCE_KEYS = {"provenance", "provenance_ref", "provenance_reference", "attestation"}
+AUTHORIZATION_KEYS = {"deployment_authorized", "deploy_authorized"}
 
 
 def key(value: Any) -> str:
@@ -46,13 +33,6 @@ def walk(value: Any, path: str = "$") -> Iterable[tuple[str, Any]]:
             yield from walk(child, f"{path}[{index}]")
 
 
-def first(mapping: dict[str, Any], names: set[str]) -> Any:
-    for name, value in mapping.items():
-        if key(name) in names:
-            return value
-    return None
-
-
 def unresolved(value: Any) -> bool:
     if value is None:
         return True
@@ -62,43 +42,93 @@ def unresolved(value: Any) -> bool:
     return not text or any(item == text or item in text for item in FORBIDDEN)
 
 
-def collect_entries(document: Any) -> dict[str, tuple[str, dict[str, Any]]]:
-    entries: dict[str, tuple[str, dict[str, Any]]] = {}
+def canonical_candidates(document: Any) -> dict[str, Any]:
+    if not isinstance(document, dict):
+        return {}
+    candidates = document.get("candidates")
+    return candidates if isinstance(candidates, dict) else {}
+
+
+def deployment_authorization(document: Any) -> tuple[bool | None, list[tuple[str, str]]]:
+    """Return only the canonical root decision and reject every nested alias."""
+    findings: list[tuple[str, str]] = []
+    if not isinstance(document, dict):
+        return None, [("$", "matrix root must be an object")]
+
+    root_aliases = [name for name in document if key(name) in AUTHORIZATION_KEYS]
+    if root_aliases != ["deployment_authorized"]:
+        findings.append(("$", "exactly one canonical root deployment_authorized field is required"))
+    authorized = document.get("deployment_authorized")
+    if not isinstance(authorized, bool):
+        findings.append(("$.deployment_authorized", "root deployment_authorized must be boolean"))
+        authorized = None
+
     for path, value in walk(document):
-        if not isinstance(value, dict):
+        if path == "$" or not isinstance(value, dict):
             continue
-        workload = first(value, ID_KEYS)
-        evidence = [
-            first(value, REPO_KEYS), first(value, SHA_KEYS),
-            first(value, IMAGE_KEYS), first(value, DIGEST_KEYS)
-        ]
-        if workload is None or sum(item is not None for item in evidence) < 3:
-            continue
-        workload_id = str(workload).strip()
-        if workload_id and workload_id not in entries:
-            entries[workload_id] = (path, value)
-    return entries
+        for name in value:
+            if key(name) in AUTHORIZATION_KEYS:
+                findings.append((f"{path}.{name}", "nested deployment authorization is prohibited"))
+    return authorized, findings
 
 
-def deployment_authorized(document: Any) -> bool | None:
-    observed: list[bool] = []
-    for _, value in walk(document):
-        if isinstance(value, dict):
-            for name, child in value.items():
-                if key(name) in {"deployment_authorized", "deploy_authorized"} and isinstance(child, bool):
-                    observed.append(child)
-    if True in observed:
-        return True
-    if False in observed:
-        return False
-    return None
+def schema_errors(value: Any, schema: dict[str, Any], path: tuple[Any, ...] = ()) -> Iterable[tuple[tuple[Any, ...], str]]:
+    """Evaluate the closed JSON Schema subset used by immutable workload v1."""
+    if "const" in schema and value != schema["const"]:
+        yield path, f"{value!r} is not the required constant {schema['const']!r}"
+        return
+    expected_type = schema.get("type")
+    type_matches = {
+        "object": isinstance(value, dict),
+        "array": isinstance(value, list),
+        "string": isinstance(value, str),
+        "integer": isinstance(value, int) and not isinstance(value, bool),
+        "boolean": isinstance(value, bool),
+    }
+    if expected_type and not type_matches.get(expected_type, False):
+        yield path, f"value must have type {expected_type}"
+        return
+    if isinstance(value, dict):
+        required = set(schema.get("required", []))
+        for name in sorted(required - set(value)):
+            yield path, f"{name!r} is a required property"
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            for name in sorted(set(value) - set(properties)):
+                yield path + (name,), "additional property is prohibited"
+        for name in sorted(set(value) & set(properties)):
+            yield from schema_errors(value[name], properties[name], path + (name,))
+    if isinstance(value, str):
+        if "minLength" in schema and len(value) < schema["minLength"]:
+            yield path, f"string is shorter than {schema['minLength']} characters"
+        if "pattern" in schema and re.fullmatch(schema["pattern"], value) is None:
+            yield path, f"string does not match {schema['pattern']}"
 
 
-def validate(document: Any, expected: int = 64, require_authorized: bool = True) -> dict[str, Any]:
+def format_schema_path(error_path: tuple[Any, ...], workload_id: str) -> str:
+    suffix = "".join(f"[{part}]" if isinstance(part, int) else f".{part}" for part in error_path)
+    return f"$.candidates.{workload_id}{suffix}"
+
+
+def validate(
+    document: Any,
+    schema: dict[str, Any],
+    expected: int = 64,
+    require_authorized: bool = True,
+) -> dict[str, Any]:
     findings: list[dict[str, str]] = []
 
     def add(code: str, path: str, detail: str) -> None:
         findings.append({"code": code, "path": path, "detail": detail})
+
+    if not isinstance(document, dict):
+        add("MATRIX_ROOT", "$", "matrix root must be an object")
+        document = {}
+    else:
+        if document.get("schema") != "codestra.immutable-candidate-matrix.v1":
+            add("MATRIX_SCHEMA", "$.schema", "canonical matrix schema identifier is required")
+        if document.get("production_changed") is not False:
+            add("PRODUCTION_CHANGED", "$.production_changed", "pre-deployment matrix must remain false")
 
     for path, value in walk(document):
         if isinstance(value, str):
@@ -107,47 +137,53 @@ def validate(document: Any, expected: int = 64, require_authorized: bool = True)
             if ":latest" in value:
                 add("MUTABLE_IMAGE", path, "latest tag is prohibited")
 
-    entries = collect_entries(document)
+    entries = canonical_candidates(document)
     if len(entries) != expected:
-        add("WORKLOAD_COUNT", "$", f"expected {expected} unique workloads, found {len(entries)}")
+        add("WORKLOAD_COUNT", "$.candidates", f"expected {expected} unique workloads, found {len(entries)}")
 
-    for workload_id, (path, value) in sorted(entries.items()):
-        repository = first(value, REPO_KEYS)
-        source_sha = first(value, SHA_KEYS)
-        image = first(value, IMAGE_KEYS)
-        digest = first(value, DIGEST_KEYS)
-        if digest is None and isinstance(image, str) and "@" in image:
-            digest = image.rsplit("@", 1)[-1]
-        signature = first(value, SIGNATURE_KEYS)
-        sbom = first(value, SBOM_KEYS)
-        provenance = first(value, PROVENANCE_KEYS)
-        rollback = first(value, ROLLBACK_KEYS)
+    for workload_id, value in sorted(entries.items()):
+        path = f"$.candidates.{workload_id}"
+        if not isinstance(workload_id, str) or not isinstance(value, dict):
+            add("WORKLOAD_RECORD", path, "workload key and evidence record must be valid")
+            continue
+        for error_path, message in schema_errors(value, schema):
+            add("WORKLOAD_SCHEMA", format_schema_path(error_path, workload_id), message)
+        if value.get("workload_id") != workload_id:
+            add("WORKLOAD_ID_BINDING", path, "record workload_id must equal its candidate key")
 
-        if not isinstance(repository, str) or not REPOSITORY_RE.fullmatch(repository.strip()):
-            add("REPOSITORY", path, f"{workload_id}: repository must be owner/name")
-        if not isinstance(source_sha, str) or not SHA_RE.fullmatch(source_sha.strip().lower()):
-            add("SOURCE_SHA", path, f"{workload_id}: exact protected source SHA required")
-        if not isinstance(image, str) or not IMAGE_RE.fullmatch(image.strip().lower()):
-            add("IMAGE", path, f"{workload_id}: immutable repository@sha256 image required")
-        if not isinstance(digest, str) or not DIGEST_RE.fullmatch(digest.strip().lower()):
-            add("DIGEST", path, f"{workload_id}: exact image digest required")
-        elif isinstance(image, str) and image.rsplit("@", 1)[-1].lower() != digest.strip().lower():
-            add("IMAGE_DIGEST_MISMATCH", path, f"{workload_id}: image and digest disagree")
-        for code, label, evidence in (
-            ("SIGNATURE", "signature", signature),
-            ("SBOM", "SBOM", sbom),
-            ("PROVENANCE", "provenance", provenance),
-        ):
-            if unresolved(evidence):
-                add(code, path, f"{workload_id}: {label} evidence required")
-        if not isinstance(rollback, str) or not DIGEST_RE.fullmatch(rollback.strip().lower()):
-            add("ROLLBACK", path, f"{workload_id}: exact rollback digest required")
-        elif isinstance(digest, str) and rollback.strip().lower() == digest.strip().lower():
+        image = value.get("image")
+        digest = value.get("image_digest")
+        source_sha = value.get("protected_source_sha")
+        rollback = value.get("rollback_digest")
+        runtime = value.get("runtime_identity")
+        if isinstance(image, str) and isinstance(digest, str) and "@" in image:
+            if image.rsplit("@", 1)[-1] != digest:
+                add("IMAGE_DIGEST_MISMATCH", path, f"{workload_id}: image and digest disagree")
+        if isinstance(rollback, str) and isinstance(digest, str) and rollback == digest:
             add("ROLLBACK_NOOP", path, f"{workload_id}: rollback must differ from candidate")
+        if isinstance(runtime, dict):
+            if runtime.get("source_sha_readback") != source_sha:
+                add("RUNTIME_SOURCE_MISMATCH", path, f"{workload_id}: runtime source readback differs")
+            if runtime.get("image_digest_readback") != digest:
+                add("RUNTIME_DIGEST_MISMATCH", path, f"{workload_id}: runtime digest readback differs")
 
-    authorized = deployment_authorized(document)
+        signature = value.get("signature")
+        if isinstance(signature, dict) and signature.get("subject_image") != image:
+            add("SIGNATURE_SUBJECT_MISMATCH", path, f"{workload_id}: signature subject differs")
+        provenance = value.get("provenance")
+        if isinstance(provenance, dict):
+            if provenance.get("subject_image") != image:
+                add("PROVENANCE_IMAGE_MISMATCH", path, f"{workload_id}: provenance subject differs")
+            if provenance.get("source_repository") != value.get("repository"):
+                add("PROVENANCE_REPOSITORY_MISMATCH", path, f"{workload_id}: provenance repository differs")
+            if provenance.get("source_sha") != source_sha:
+                add("PROVENANCE_SOURCE_MISMATCH", path, f"{workload_id}: provenance source differs")
+
+    authorized, authorization_findings = deployment_authorization(document)
+    for path, detail in authorization_findings:
+        add("DEPLOYMENT_AUTHORIZATION_STRUCTURE", path, detail)
     if require_authorized and authorized is not True:
-        add("DEPLOYMENT_AUTHORIZATION", "$", "deployment_authorized must be true")
+        add("DEPLOYMENT_AUTHORIZATION", "$.deployment_authorized", "deployment_authorized must be true")
 
     return {
         "schema_version": 1,
@@ -166,6 +202,7 @@ def validate(document: Any, expected: int = 64, require_authorized: bool = True)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--matrix", type=Path, default=ROOT / "IMMUTABLE-CANDIDATE-MATRIX.yaml")
+    parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
     parser.add_argument("--expected-workloads", type=int, default=64)
     parser.add_argument("--allow-unauthorized", action="store_true")
     parser.add_argument("--evidence-output", type=Path)
@@ -175,15 +212,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        document = yaml.safe_load(args.matrix.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError) as exc:
+        import yaml
+    except ImportError as exc:
         print(f"IMMUTABLE_MATRIX_ERROR={exc}", file=sys.stderr)
         return 1
-    result = validate(
-        document,
-        expected=args.expected_workloads,
-        require_authorized=not args.allow_unauthorized,
-    )
+    try:
+        document = yaml.safe_load(args.matrix.read_text(encoding="utf-8"))
+        schema = json.loads(args.schema.read_text(encoding="utf-8"))
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        print(f"IMMUTABLE_MATRIX_ERROR={exc}", file=sys.stderr)
+        return 1
+    result = validate(document, schema, expected=args.expected_workloads, require_authorized=not args.allow_unauthorized)
     if args.evidence_output:
         args.evidence_output.parent.mkdir(parents=True, exist_ok=True)
         args.evidence_output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
