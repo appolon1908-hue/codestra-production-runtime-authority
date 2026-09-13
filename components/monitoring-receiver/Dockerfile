@@ -5,6 +5,9 @@ ARG VERSION
 LABEL org.opencontainers.image.revision=$VCS_REF \
       org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.version=$VERSION
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libpcre2-8-0=10.42-1+deb12u1 \
+    && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir fastapi==0.141.1 starlette==1.6.0 uvicorn==0.52.4
 WORKDIR /app
 COPY app.py /app/app.py
