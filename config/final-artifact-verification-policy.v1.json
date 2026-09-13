@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "expected_artifacts": 64,
+  "allowed_architectures": ["linux/amd64", "linux/arm64"],
+  "required_signature_issuer": "https://token.actions.githubusercontent.com",
+  "required_certificate_identity_prefix": "https://github.com/",
+  "required_provenance_predicate": "https://slsa.dev/provenance/v1",
+  "allowed_sbom_formats": ["spdx-json", "cyclonedx-json"],
+  "maximum_vulnerability_database_age_hours": 168,
+  "maximum_critical_vulnerabilities": 0,
+  "maximum_high_vulnerabilities": 0,
+  "required_status": "PASS",
+  "safety": {
+    "mutable_images_allowed": false,
+    "unsigned_artifacts_allowed": false,
+    "missing_sbom_allowed": false,
+    "missing_provenance_allowed": false,
+    "unverified_attestations_allowed": false,
+    "business_writes_allowed": false,
+    "communications_delivery_allowed": false,
+    "provider_effects_allowed": false,
+    "financial_or_trading_mutation_allowed": false
+  }
+}
